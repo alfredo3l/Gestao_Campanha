@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, Users } from "lucide-react";
+import { Pencil, Plus, Users } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/app/page-header";
@@ -19,6 +19,7 @@ import { AvatarInitials } from "@/components/app/avatar-initials";
 import { ApoiadoresFiltros } from "./filtros";
 import { fmtNumero, fmtTelefone, fmtData } from "@/lib/utils/formatters";
 import { formatarCpf, somenteDigitos } from "@/lib/utils/cpf";
+import { getSetores } from "@/lib/localidades/get-localidades";
 
 export const metadata = { title: "Apoiadores" };
 
@@ -29,8 +30,25 @@ interface Search {
   status?: string;
   municipio?: string;
   lider?: string;
+  setor?: string;
   page?: string;
 }
+
+/** Lê parâmetro multi-valor (CSV) — suporta filtros do tipo "in (...)". */
+function parseMulti(raw: string | undefined): string[] {
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0 && s !== "todos");
+}
+
+type StatusApoioValue =
+  | "confirmado"
+  | "provavel"
+  | "indeciso"
+  | "contato"
+  | "nao_vota";
 
 export default async function ApoiadoresPage({ searchParams }: { searchParams: Search }) {
   const supabase = createClient();
@@ -38,27 +56,25 @@ export default async function ApoiadoresPage({ searchParams }: { searchParams: S
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
+  const statusSel = parseMulti(searchParams.status) as StatusApoioValue[];
+  const municipioSel = parseMulti(searchParams.municipio);
+  const liderSel = parseMulti(searchParams.lider);
+  const setorSel = parseMulti(searchParams.setor);
+
   let query = supabase
     .from("apoiadores")
     .select(
-      "id, nome, cpf, tel, foto_path, municipio, bairro, status, created_at, lider:liderancas(id, nome, foto_path)",
+      "id, nome, cpf, tel, foto_path, municipio, bairro, setor_id, status, created_at, lider:liderancas(id, nome, foto_path)",
       { count: "exact" }
     )
     .order("created_at", { ascending: false })
     .range(from, to);
 
-  if (searchParams.status && searchParams.status !== "todos") {
-    query = query.eq(
-      "status",
-      searchParams.status as "confirmado" | "provavel" | "indeciso" | "contato" | "nao_vota"
-    );
-  }
-  if (searchParams.municipio && searchParams.municipio !== "todos") {
-    query = query.eq("municipio", searchParams.municipio);
-  }
-  if (searchParams.lider && searchParams.lider !== "todos") {
-    query = query.eq("lider_id", searchParams.lider);
-  }
+  if (statusSel.length > 0) query = query.in("status", statusSel);
+  if (municipioSel.length > 0) query = query.in("municipio", municipioSel);
+  if (liderSel.length > 0) query = query.in("lider_id", liderSel);
+  if (setorSel.length > 0) query = query.in("setor_id", setorSel);
+
   if (searchParams.q?.trim()) {
     const term = searchParams.q.trim();
     const digits = somenteDigitos(term);
@@ -69,16 +85,32 @@ export default async function ApoiadoresPage({ searchParams }: { searchParams: S
     }
   }
 
-  const [{ data: apoiadores, count, error }, lideRes, kpiRes, municipiosRes] = await Promise.all([
-    query,
-    supabase.from("liderancas").select("id, nome").eq("ativa", true).order("nome"),
-    supabase.from("v_dashboard_kpis").select("apoiadores_total, apoiadores_semana").maybeSingle(),
-    supabase.from("v_apoiadores_municipios").select("municipio"),
-  ]);
+  const [{ data: apoiadores, count, error }, lideRes, kpiRes, municipiosRes, setoresAll] =
+    await Promise.all([
+      query,
+      supabase.from("liderancas").select("id, nome").eq("ativa", true).order("nome"),
+      supabase
+        .from("v_dashboard_kpis")
+        .select("apoiadores_total, apoiadores_semana")
+        .maybeSingle(),
+      supabase.from("v_apoiadores_municipios").select("municipio"),
+      getSetores(),
+    ]);
 
   const municipios = (municipiosRes.data ?? [])
     .map((r) => r.municipio)
     .filter((m): m is string => Boolean(m));
+  const setores = setoresAll
+    .filter((s) => s.ativo)
+    .map((s) => ({
+      id: s.id,
+      numero: s.numero,
+      nome: s.nome,
+      municipio: s.municipio,
+    }));
+  const setoresMap = new Map(
+    setoresAll.map((s) => [s.id, { numero: s.numero, nome: s.nome }])
+  );
 
   const total = count ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -89,6 +121,7 @@ export default async function ApoiadoresPage({ searchParams }: { searchParams: S
   if (searchParams.status) sp.set("status", searchParams.status);
   if (searchParams.municipio) sp.set("municipio", searchParams.municipio);
   if (searchParams.lider) sp.set("lider", searchParams.lider);
+  if (searchParams.setor) sp.set("setor", searchParams.setor);
 
   return (
     <div className="space-y-6">
@@ -111,7 +144,11 @@ export default async function ApoiadoresPage({ searchParams }: { searchParams: S
         <Stat label="Página" value={`${page} / ${totalPages}`} />
       </div>
 
-      <ApoiadoresFiltros liderancas={liderancas} municipios={municipios} />
+      <ApoiadoresFiltros
+        liderancas={liderancas}
+        municipios={municipios}
+        setores={setores}
+      />
 
       {error ? (
         <Card className="p-4 text-sm text-status-red">Erro ao carregar: {error.message}</Card>
@@ -142,15 +179,18 @@ export default async function ApoiadoresPage({ searchParams }: { searchParams: S
                 <TableHead>Nome</TableHead>
                 <TableHead>CPF</TableHead>
                 <TableHead>Município</TableHead>
+                <TableHead>Setor</TableHead>
                 <TableHead>Liderança</TableHead>
                 <TableHead>Telefone</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Cadastrado</TableHead>
+                <TableHead className="w-[1%] text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {apoiadores.map((a) => {
                 const lid = Array.isArray(a.lider) ? a.lider[0] : a.lider;
+                const setor = a.setor_id ? setoresMap.get(a.setor_id) : null;
                 return (
                   <TableRow key={a.id}>
                     <TableCell>
@@ -174,6 +214,15 @@ export default async function ApoiadoresPage({ searchParams }: { searchParams: S
                     </TableCell>
                     <TableCell className="text-ink-700">{a.municipio}</TableCell>
                     <TableCell>
+                      {setor ? (
+                        <span className="inline-flex items-center rounded-full bg-brand-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-brand-800">
+                          Setor {setor.numero}
+                        </span>
+                      ) : (
+                        <span className="text-2xs text-ink-400">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
                       {lid ? (
                         <Link
                           href={`/liderancas/${lid.id}`}
@@ -193,6 +242,13 @@ export default async function ApoiadoresPage({ searchParams }: { searchParams: S
                     </TableCell>
                     <TableCell className="text-right font-mono-tab text-xs text-ink-500">
                       {fmtData(a.created_at)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button asChild variant="outline" size="sm" aria-label={`Editar ${a.nome}`}>
+                        <Link href={`/apoiadores/${a.id}`}>
+                          <Pencil className="h-4 w-4" /> Editar
+                        </Link>
+                      </Button>
                     </TableCell>
                   </TableRow>
                 );

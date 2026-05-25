@@ -6,22 +6,24 @@ import { Search, X } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import type { FilterComboboxOption } from "@/components/ui/filter-combobox";
+import { MultiFilterCombobox } from "@/components/ui/multi-filter-combobox";
 import type { StatusApoio } from "@/lib/validations/apoiador";
+
+interface SetorOpt {
+  id: string;
+  numero: number;
+  nome: string;
+  municipio: string;
+}
 
 interface Props {
   liderancas: { id: string; nome: string }[];
   municipios: string[];
+  setores: SetorOpt[];
 }
 
-const statusOpcoes: { value: StatusApoio | "todos"; label: string }[] = [
-  { value: "todos", label: "Todos os status" },
+const statusOpcoes: { value: StatusApoio; label: string }[] = [
   { value: "confirmado", label: "Confirmados" },
   { value: "provavel", label: "Prováveis" },
   { value: "indeciso", label: "Indecisos" },
@@ -29,7 +31,17 @@ const statusOpcoes: { value: StatusApoio | "todos"; label: string }[] = [
   { value: "nao_vota", label: "Não vota" },
 ];
 
-export function ApoiadoresFiltros({ liderancas, municipios }: Props) {
+/** Lê um param multi-valor da URL: aceita "a,b,c" e devolve array (sem vazios). */
+function readMulti(params: URLSearchParams, key: string): string[] {
+  const raw = params.get(key);
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+export function ApoiadoresFiltros({ liderancas, municipios, setores }: Props) {
   const router = useRouter();
   const params = useSearchParams();
   const [pending, startTransition] = useTransition();
@@ -39,9 +51,17 @@ export function ApoiadoresFiltros({ liderancas, municipios }: Props) {
     setQ(params.get("q") ?? "");
   }, [params]);
 
-  function update(key: string, value: string) {
+  function updateMulti(key: string, values: string[]) {
     const next = new URLSearchParams(params);
-    if (!value || value === "todos") next.delete(key);
+    if (values.length === 0) next.delete(key);
+    else next.set(key, values.join(","));
+    next.delete("page");
+    startTransition(() => router.push(`/apoiadores?${next.toString()}`));
+  }
+
+  function updateText(key: string, value: string) {
+    const next = new URLSearchParams(params);
+    if (!value) next.delete(key);
     else next.set(key, value);
     next.delete("page");
     startTransition(() => router.push(`/apoiadores?${next.toString()}`));
@@ -49,7 +69,7 @@ export function ApoiadoresFiltros({ liderancas, municipios }: Props) {
 
   function onSearchSubmit(e: React.FormEvent) {
     e.preventDefault();
-    update("q", q.trim());
+    updateText("q", q.trim());
   }
 
   function clear() {
@@ -57,7 +77,40 @@ export function ApoiadoresFiltros({ liderancas, municipios }: Props) {
     startTransition(() => router.push("/apoiadores"));
   }
 
-  const hasFilters = ["q", "status", "municipio", "lider"].some((k) => params.get(k));
+  const hasFilters = ["q", "status", "municipio", "lider", "setor"].some((k) =>
+    params.get(k)
+  );
+
+  const statusOptions: FilterComboboxOption[] = statusOpcoes.map((o) => ({
+    value: o.value,
+    label: o.label,
+  }));
+
+  const municipioOptions: FilterComboboxOption[] = municipios.map((m) => ({
+    value: m,
+    label: m,
+  }));
+
+  const liderancaOptions: FilterComboboxOption[] = liderancas.map((l) => ({
+    value: l.id,
+    label: l.nome,
+  }));
+
+  // Se houver setores em mais de um município, prefixa o município no label
+  // para evitar ambiguidade. Caso contrário, mostra apenas "Setor N — Nome".
+  const municipiosDistintos = new Set(setores.map((s) => s.municipio)).size;
+  const setorOptions: FilterComboboxOption[] = setores.map((s) => ({
+    value: s.id,
+    label:
+      municipiosDistintos > 1
+        ? `${s.municipio} · Setor ${s.numero} — ${s.nome}`
+        : `Setor ${s.numero} — ${s.nome}`,
+  }));
+
+  const statusValue = readMulti(params, "status");
+  const municipioValue = readMulti(params, "municipio");
+  const liderValue = readMulti(params, "lider");
+  const setorValue = readMulti(params, "setor");
 
   return (
     <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -71,53 +124,50 @@ export function ApoiadoresFiltros({ liderancas, municipios }: Props) {
         />
       </form>
       <div className="flex flex-wrap items-center gap-2">
-        <Select
-          value={params.get("status") ?? "todos"}
-          onValueChange={(v) => update("status", v)}
-        >
-          <SelectTrigger className="w-[170px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {statusOpcoes.map((o) => (
-              <SelectItem key={o.value} value={o.value}>
-                {o.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={params.get("municipio") ?? "todos"}
-          onValueChange={(v) => update("municipio", v)}
-        >
-          <SelectTrigger className="w-[170px]">
-            <SelectValue placeholder="Município" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos os municípios</SelectItem>
-            {municipios.map((m) => (
-              <SelectItem key={m} value={m}>
-                {m}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={params.get("lider") ?? "todos"}
-          onValueChange={(v) => update("lider", v)}
-        >
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Liderança" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todas as lideranças</SelectItem>
-            {liderancas.map((l) => (
-              <SelectItem key={l.id} value={l.id}>
-                {l.nome}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <MultiFilterCombobox
+          className="w-[180px]"
+          options={statusOptions}
+          value={statusValue}
+          onChange={(v) => updateMulti("status", v)}
+          placeholder="Status"
+          ariaLabel="Filtrar por status (multi)"
+          searchPlaceholder="Pesquisar status…"
+          emptyMessage="Nenhum status encontrado."
+          countLabel={(n) => `${n} status`}
+        />
+        <MultiFilterCombobox
+          className="w-[200px]"
+          options={municipioOptions}
+          value={municipioValue}
+          onChange={(v) => updateMulti("municipio", v)}
+          placeholder="Município"
+          ariaLabel="Filtrar por município (multi)"
+          searchPlaceholder="Pesquisar município…"
+          emptyMessage="Nenhum município encontrado."
+          countLabel={(n) => (n === 1 ? "1 município" : `${n} municípios`)}
+        />
+        <MultiFilterCombobox
+          className="w-[220px]"
+          options={liderancaOptions}
+          value={liderValue}
+          onChange={(v) => updateMulti("lider", v)}
+          placeholder="Liderança"
+          ariaLabel="Filtrar por liderança (multi)"
+          searchPlaceholder="Pesquisar liderança…"
+          emptyMessage="Nenhuma liderança encontrada."
+          countLabel={(n) => (n === 1 ? "1 liderança" : `${n} lideranças`)}
+        />
+        <MultiFilterCombobox
+          className="w-[200px]"
+          options={setorOptions}
+          value={setorValue}
+          onChange={(v) => updateMulti("setor", v)}
+          placeholder="Setor"
+          ariaLabel="Filtrar por setor (multi)"
+          searchPlaceholder="Pesquisar setor…"
+          emptyMessage="Nenhum setor encontrado."
+          countLabel={(n) => (n === 1 ? "1 setor" : `${n} setores`)}
+        />
         {hasFilters && (
           <Button variant="ghost" size="sm" onClick={clear} disabled={pending}>
             <X className="h-4 w-4" /> Limpar

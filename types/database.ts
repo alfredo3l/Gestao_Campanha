@@ -73,6 +73,10 @@ export type Database = {
           cargo: string;
           municipio: string;
           bairro: string | null;
+          /** FK para campanha.bairros — migration 0012. */
+          bairro_id: string | null;
+          /** FK para campanha.setores — migration 0012. */
+          setor_id: string | null;
           tel: string | null;
           email: string | null;
           meta_votos: number;
@@ -92,6 +96,8 @@ export type Database = {
           cargo: string;
           municipio: string;
           bairro?: string | null;
+          bairro_id?: string | null;
+          setor_id?: string | null;
           tel?: string | null;
           email?: string | null;
           meta_votos?: number;
@@ -110,6 +116,18 @@ export type Database = {
             columns: ["cargo"];
             referencedRelation: "cargos_lider";
             referencedColumns: ["value"];
+          },
+          {
+            foreignKeyName: "liderancas_bairro_id_fkey";
+            columns: ["bairro_id"];
+            referencedRelation: "bairros";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "liderancas_setor_id_fkey";
+            columns: ["setor_id"];
+            referencedRelation: "setores";
+            referencedColumns: ["id"];
           }
         ];
       };
@@ -139,6 +157,67 @@ export type Database = {
         Update: Partial<Database["campanha"]["Tables"]["cargos_lider"]["Insert"]>;
         Relationships: [];
       };
+      setores: {
+        Row: {
+          id: string;
+          numero: number;
+          nome: string;
+          municipio: string;
+          cor: string | null;
+          ativo: boolean;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+          updated_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          numero: number;
+          nome: string;
+          municipio?: string;
+          cor?: string | null;
+          ativo?: boolean;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+          updated_by?: string | null;
+        };
+        Update: Partial<Database["campanha"]["Tables"]["setores"]["Insert"]>;
+        Relationships: [];
+      };
+      bairros: {
+        Row: {
+          id: string;
+          nome: string;
+          municipio: string;
+          setor_id: string | null;
+          ativo: boolean;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+          updated_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          nome: string;
+          municipio?: string;
+          setor_id?: string | null;
+          ativo?: boolean;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+          updated_by?: string | null;
+        };
+        Update: Partial<Database["campanha"]["Tables"]["bairros"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "bairros_setor_id_fkey";
+            columns: ["setor_id"];
+            referencedRelation: "setores";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       apoiadores: {
         Row: {
           id: string;
@@ -152,6 +231,10 @@ export type Database = {
           nascimento: string | null;
           endereco: string | null;
           bairro: string | null;
+          /** FK para campanha.bairros — migration 0012. */
+          bairro_id: string | null;
+          /** FK para campanha.setores — migration 0012. */
+          setor_id: string | null;
           municipio: string;
           cep: string | null;
           lider_id: string;
@@ -179,6 +262,8 @@ export type Database = {
           nascimento?: string | null;
           endereco?: string | null;
           bairro?: string | null;
+          bairro_id?: string | null;
+          setor_id?: string | null;
           municipio: string;
           cep?: string | null;
           lider_id: string;
@@ -198,6 +283,18 @@ export type Database = {
             foreignKeyName: "apoiadores_lider_id_fkey";
             columns: ["lider_id"];
             referencedRelation: "liderancas";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "apoiadores_bairro_id_fkey";
+            columns: ["bairro_id"];
+            referencedRelation: "bairros";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "apoiadores_setor_id_fkey";
+            columns: ["setor_id"];
+            referencedRelation: "setores";
             referencedColumns: ["id"];
           }
         ];
@@ -255,6 +352,12 @@ export type Database = {
           status: Database["campanha"]["Enums"]["status_demanda"];
           solicitante_id: string | null;
           lider_id: string;
+          /** Texto retro-compat — migration 0012. */
+          bairro: string | null;
+          /** FK para campanha.bairros — migration 0012. */
+          bairro_id: string | null;
+          /** FK para campanha.setores — migration 0012. */
+          setor_id: string | null;
           prazo: string | null;
           resolvida_em: string | null;
           created_at: string;
@@ -273,6 +376,9 @@ export type Database = {
           status?: Database["campanha"]["Enums"]["status_demanda"];
           solicitante_id?: string | null;
           lider_id: string;
+          bairro?: string | null;
+          bairro_id?: string | null;
+          setor_id?: string | null;
           prazo?: string | null;
           resolvida_em?: string | null;
           created_at?: string;
@@ -292,6 +398,18 @@ export type Database = {
             foreignKeyName: "demandas_solicitante_id_fkey";
             columns: ["solicitante_id"];
             referencedRelation: "apoiadores";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "demandas_bairro_id_fkey";
+            columns: ["bairro_id"];
+            referencedRelation: "bairros";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "demandas_setor_id_fkey";
+            columns: ["setor_id"];
+            referencedRelation: "setores";
             referencedColumns: ["id"];
           }
         ];

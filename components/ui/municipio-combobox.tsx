@@ -22,6 +22,8 @@ interface Props {
   className?: string;
   /** Quando `true`, NÃO pré-preenche com o padrão (útil em edição). */
   semPadrao?: boolean;
+  /** Callback chamado a cada mudança do município (texto cru). */
+  onValueChange?: (value: string) => void;
 }
 
 /**
@@ -40,6 +42,7 @@ export function MunicipioCombobox({
   placeholder = "Comece a digitar o município…",
   className,
   semPadrao,
+  onValueChange,
 }: Props) {
   const autoId = useId();
   const inputId = id ?? `municipio-${autoId}`;
@@ -52,6 +55,10 @@ export function MunicipioCombobox({
   const [value, setValue] = useState<string>(valorInicial);
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
+
+  useEffect(() => {
+    onValueChange?.(value);
+  }, [value, onValueChange]);
 
   const filtered = useMemo(() => {
     const q = normalizarMunicipio(value);

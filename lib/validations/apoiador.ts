@@ -44,6 +44,20 @@ export const apoiadorBaseSchema = z.object({
     .or(z.literal("")),
   endereco: z.string().trim().max(200).optional().or(z.literal("")),
   bairro: z.string().trim().max(80).optional().or(z.literal("")),
+  bairro_id: z
+    .string()
+    .uuid()
+    .optional()
+    .or(z.literal(""))
+    .transform((v) => (v ? v : null))
+    .nullable(),
+  setor_id: z
+    .string()
+    .uuid()
+    .optional()
+    .or(z.literal(""))
+    .transform((v) => (v ? v : null))
+    .nullable(),
   municipio: z.string().trim().min(2).max(80),
   cep: z
     .string()

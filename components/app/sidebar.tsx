@@ -11,6 +11,7 @@ import {
   Inbox,
   BarChart3,
   PieChart,
+  Map,
   Settings,
 } from "lucide-react";
 
@@ -24,6 +25,7 @@ const items = [
   { href: "/demandas", label: "Demandas", icon: Inbox },
   { href: "/relatorios", label: "Relatórios", icon: BarChart3 },
   { href: "/estatisticas-eleitorais", label: "Estatísticas Eleitorais", icon: PieChart },
+  { href: "/mapa-tres-lagoas", label: "Mapa Três Lagoas", icon: Map },
   { href: "/configuracoes", label: "Configurações", icon: Settings },
 ];
 

@@ -7,16 +7,20 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ApoiadorForm } from "../apoiador-form";
 import { EmptyState } from "@/components/app/empty-state";
 import { Button } from "@/components/ui/button";
+import { getBairrosComSetor } from "@/lib/localidades/get-localidades";
 
 export const metadata = { title: "Novo apoiador" };
 
 export default async function NovoApoiadorPage() {
   const supabase = createClient();
-  const { data: liderancas } = await supabase
-    .from("liderancas")
-    .select("id, nome, municipio")
-    .eq("ativa", true)
-    .order("nome");
+  const [{ data: liderancas }, bairros] = await Promise.all([
+    supabase
+      .from("liderancas")
+      .select("id, nome, municipio")
+      .eq("ativa", true)
+      .order("nome"),
+    getBairrosComSetor(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -45,7 +49,7 @@ export default async function NovoApoiadorPage() {
               }
             />
           ) : (
-            <ApoiadorForm modo="novo" liderancas={liderancas} />
+            <ApoiadorForm modo="novo" liderancas={liderancas} bairros={bairros} />
           )}
         </CardContent>
       </Card>

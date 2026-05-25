@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ShieldCheck, Database, Users2, Tags, UserCog, UserCircle, ArrowRight } from "lucide-react";
+import { ShieldCheck, Database, Users2, Tags, UserCog, UserCircle, ArrowRight, MapPinned } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/app/page-header";
@@ -173,6 +173,28 @@ export default async function ConfiguracoesPage() {
               <p className="mt-0.5 text-xs text-ink-500">
                 Adicione, renomeie ou desative as opções de cargo usadas no cadastro de
                 lideranças. Somente <strong>admin</strong> e <strong>coordenador</strong>.
+              </p>
+            </div>
+          </div>
+        </Link>
+
+        <Link
+          href="/configuracoes/bairros"
+          className="group rounded-lg border border-ink-200 bg-white p-4 transition-shadow hover:shadow-sm"
+        >
+          <div className="flex items-start gap-3">
+            <div className="rounded-md bg-brand-100 p-2 text-brand-800">
+              <MapPinned className="h-5 w-5" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-ink-900">Bairros & Setores</p>
+                <ArrowRight className="h-4 w-4 text-ink-400 transition-transform group-hover:translate-x-0.5 group-hover:text-brand-700" />
+              </div>
+              <p className="mt-0.5 text-xs text-ink-500">
+                Gerencie os bairros disponíveis e a associação com os setores da cidade.
+                Inicialmente focado em Três Lagoas, mas a estrutura suporta múltiplas
+                cidades.
               </p>
             </div>
           </div>

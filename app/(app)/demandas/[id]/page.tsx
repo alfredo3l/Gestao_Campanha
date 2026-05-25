@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
+import { getBairrosComSetor } from "@/lib/localidades/get-localidades";
 import { PageHeader } from "@/components/app/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DemandaForm } from "../demanda-form";
@@ -18,7 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 export default async function DemandaDetalhePage({ params }: { params: { id: string } }) {
   const supabase = createClient();
 
-  const [demandaRes, lideRes, apoiaRes, movRes] = await Promise.all([
+  const [demandaRes, lideRes, apoiaRes, movRes, bairros] = await Promise.all([
     supabase.from("demandas").select("*").eq("id", params.id).maybeSingle(),
     supabase.from("liderancas").select("id, nome, municipio").order("nome"),
     supabase.from("apoiadores").select("id, nome").order("nome").limit(500),
@@ -27,6 +28,7 @@ export default async function DemandaDetalhePage({ params }: { params: { id: str
       .select("id, tipo, texto, criada_em, autor_id")
       .eq("demanda_id", params.id)
       .order("criada_em", { ascending: false }),
+    getBairrosComSetor(),
   ]);
 
   if (demandaRes.error || !demandaRes.data) notFound();
@@ -156,6 +158,7 @@ export default async function DemandaDetalhePage({ params }: { params: { id: str
                 id={d.id}
                 liderancas={lideRes.data ?? []}
                 apoiadores={apoiaRes.data ?? []}
+                bairros={bairros}
                 inicial={{
                   titulo: d.titulo,
                   descricao: d.descricao,
@@ -164,6 +167,9 @@ export default async function DemandaDetalhePage({ params }: { params: { id: str
                   status: d.status,
                   solicitante_id: d.solicitante_id,
                   lider_id: d.lider_id,
+                  bairro: d.bairro,
+                  bairro_id: d.bairro_id,
+                  setor_id: d.setor_id,
                   prazo: d.prazo,
                 }}
               />

@@ -19,6 +19,10 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { MunicipioCombobox } from "@/components/ui/municipio-combobox";
+import {
+  BairroCombobox,
+  type BairroOption,
+} from "@/components/ui/bairro-combobox";
 import { FotoUpload } from "@/components/app/foto-upload";
 import { criarApoiador, atualizarApoiador, type ActionState } from "./actions";
 import type { StatusApoio } from "@/lib/validations/apoiador";
@@ -42,6 +46,8 @@ interface Inicial {
   nascimento: string | null;
   endereco: string | null;
   bairro: string | null;
+  bairro_id?: string | null;
+  setor_id?: string | null;
   municipio: string;
   cep: string | null;
   lider_id: string;
@@ -56,6 +62,7 @@ interface Props {
   modo: "novo" | "editar";
   id?: string;
   liderancas: LiderancaOption[];
+  bairros: BairroOption[];
   inicial?: Inicial;
 }
 
@@ -76,7 +83,7 @@ function SubmitButton({ modo }: { modo: "novo" | "editar" }) {
   );
 }
 
-export function ApoiadorForm({ modo, id, liderancas, inicial }: Props) {
+export function ApoiadorForm({ modo, id, liderancas, bairros, inicial }: Props) {
   const router = useRouter();
   const action =
     modo === "novo"
@@ -90,6 +97,7 @@ export function ApoiadorForm({ modo, id, liderancas, inicial }: Props) {
   const [tel, setTel] = useState(inicial?.tel ? fmtTelefone(inicial.tel) : "");
   const [cep, setCep] = useState(inicial?.cep ? fmtCep(inicial.cep) : "");
   const [nome, setNome] = useState(inicial?.nome ?? "");
+  const [municipio, setMunicipio] = useState<string>(inicial?.municipio ?? "Três Lagoas");
   const [fotoPath, setFotoPath] = useState<string | null>(inicial?.foto_path ?? null);
 
   useEffect(() => {
@@ -195,15 +203,27 @@ export function ApoiadorForm({ modo, id, liderancas, inicial }: Props) {
         <Field label="Endereço" colSpan={2}>
           <Input name="endereco" defaultValue={inicial?.endereco ?? ""} maxLength={200} />
         </Field>
-        <Field label="Bairro">
-          <Input name="bairro" defaultValue={inicial?.bairro ?? ""} maxLength={80} />
-        </Field>
         <Field label="Município *">
           <MunicipioCombobox
             name="municipio"
             required
             defaultValue={inicial?.municipio}
             semPadrao={modo === "editar"}
+            onValueChange={setMunicipio}
+          />
+        </Field>
+        <Field
+          label="Bairro"
+          colSpan={2}
+          hint="Selecione um bairro cadastrado; o setor associado aparece automaticamente."
+        >
+          <BairroCombobox
+            name="bairro"
+            options={bairros}
+            municipio={municipio}
+            defaultValue={inicial?.bairro ?? ""}
+            defaultBairroId={inicial?.bairro_id ?? null}
+            defaultSetorId={inicial?.setor_id ?? null}
           />
         </Field>
         <Field label="CEP">

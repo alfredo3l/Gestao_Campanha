@@ -14,6 +14,21 @@ export const demandaSchema = z.object({
   status: statusDemandaEnum.default("aberta"),
   solicitante_id: z.string().uuid().nullable().optional(),
   lider_id: z.string().uuid("Liderança responsável obrigatória"),
+  bairro: z.string().trim().max(80).optional().or(z.literal("")),
+  bairro_id: z
+    .string()
+    .uuid()
+    .optional()
+    .or(z.literal(""))
+    .transform((v) => (v ? v : null))
+    .nullable(),
+  setor_id: z
+    .string()
+    .uuid()
+    .optional()
+    .or(z.literal(""))
+    .transform((v) => (v ? v : null))
+    .nullable(),
   prazo: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Use o formato AAAA-MM-DD")

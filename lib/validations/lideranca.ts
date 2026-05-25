@@ -24,6 +24,20 @@ export const liderancaSchema = z.object({
   cargo: cargoSlugSchema,
   municipio: z.string().trim().min(2).max(80),
   bairro: z.string().trim().max(80).optional().or(z.literal("")),
+  bairro_id: z
+    .string()
+    .uuid()
+    .optional()
+    .or(z.literal(""))
+    .transform((v) => (v ? v : null))
+    .nullable(),
+  setor_id: z
+    .string()
+    .uuid()
+    .optional()
+    .or(z.literal(""))
+    .transform((v) => (v ? v : null))
+    .nullable(),
   tel: z.string().trim().max(20).optional().or(z.literal("")),
   email: z.string().trim().email("E-mail inválido").max(120).optional().or(z.literal("")),
   meta_votos: z.coerce.number().int().min(0, "Meta não pode ser negativa").max(1_000_000),

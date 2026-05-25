@@ -18,6 +18,9 @@ function parse(formData: FormData) {
     status: formData.get("status") || "aberta",
     solicitante_id: sol && sol !== "none" ? sol : null,
     lider_id: formData.get("lider_id"),
+    bairro: formData.get("bairro") || "",
+    bairro_id: formData.get("bairro_id") || "",
+    setor_id: formData.get("setor_id") || "",
     prazo: formData.get("prazo") || "",
   });
 }
@@ -45,6 +48,9 @@ export async function criarDemanda(_: ActionState, formData: FormData): Promise<
       status: p.status,
       solicitante_id: p.solicitante_id || null,
       lider_id: p.lider_id,
+      bairro: p.bairro || null,
+      bairro_id: p.bairro_id,
+      setor_id: p.setor_id,
       prazo: p.prazo || null,
       created_by: user.id,
     })
@@ -80,6 +86,9 @@ export async function atualizarDemanda(
       status: p.status,
       solicitante_id: p.solicitante_id || null,
       lider_id: p.lider_id,
+      bairro: p.bairro || null,
+      bairro_id: p.bairro_id,
+      setor_id: p.setor_id,
       prazo: p.prazo || null,
       resolvida_em: p.status === "resolvida" ? new Date().toISOString() : null,
     })

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -16,6 +16,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  BairroCombobox,
+  type BairroOption,
+} from "@/components/ui/bairro-combobox";
+import { MunicipioCombobox } from "@/components/ui/municipio-combobox";
 import { criarDemanda, atualizarDemanda, type ActionState } from "./actions";
 import type { Prioridade, StatusDemanda } from "@/lib/validations/demanda";
 
@@ -27,6 +32,11 @@ interface Inicial {
   status: StatusDemanda;
   solicitante_id: string | null;
   lider_id: string;
+  bairro?: string | null;
+  bairro_id?: string | null;
+  setor_id?: string | null;
+  /** Município do endereço (não fica gravado na demanda — só usado pelo combobox). */
+  municipio?: string;
   prazo: string | null;
 }
 
@@ -35,6 +45,7 @@ interface Props {
   id?: string;
   liderancas: { id: string; nome: string; municipio: string }[];
   apoiadores: { id: string; nome: string }[];
+  bairros: BairroOption[];
   inicial?: Inicial;
 }
 
@@ -58,13 +69,24 @@ function SubmitButton({ modo }: { modo: "novo" | "editar" }) {
   );
 }
 
-export function DemandaForm({ modo, id, liderancas, apoiadores, inicial }: Props) {
+export function DemandaForm({
+  modo,
+  id,
+  liderancas,
+  apoiadores,
+  bairros,
+  inicial,
+}: Props) {
   const router = useRouter();
   const action =
     modo === "novo"
       ? criarDemanda
       : (state: ActionState, fd: FormData) => atualizarDemanda(id!, state, fd);
   const [state, formAction] = useFormState<ActionState, FormData>(action, {});
+
+  const [municipio, setMunicipio] = useState<string>(
+    inicial?.municipio ?? "Três Lagoas"
+  );
 
   useEffect(() => {
     if (state.error) toast.error("Não foi possível salvar", { description: state.error });
@@ -155,6 +177,36 @@ export function DemandaForm({ modo, id, liderancas, apoiadores, inicial }: Props
               ))}
             </SelectContent>
           </Select>
+        </div>
+        <div className="space-y-1.5 md:col-span-2">
+          <Label className="text-2xs font-semibold uppercase tracking-wide text-ink-500">
+            Localidade (opcional)
+          </Label>
+          <p className="text-2xs text-ink-500">
+            Útil para mapear demandas por região da cidade. Não substitui o endereço
+            do apoiador solicitante.
+          </p>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="demanda-municipio">Município</Label>
+          <MunicipioCombobox
+            id="demanda-municipio"
+            name="municipio_ref"
+            defaultValue={inicial?.municipio ?? "Três Lagoas"}
+            onValueChange={setMunicipio}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="demanda-bairro">Bairro</Label>
+          <BairroCombobox
+            id="demanda-bairro"
+            name="bairro"
+            options={bairros}
+            municipio={municipio}
+            defaultValue={inicial?.bairro ?? ""}
+            defaultBairroId={inicial?.bairro_id ?? null}
+            defaultSetorId={inicial?.setor_id ?? null}
+          />
         </div>
         <div className="space-y-1.5 md:col-span-2">
           <Label htmlFor="descricao">Descrição</Label>

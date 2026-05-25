@@ -6,21 +6,22 @@ import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/app/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { ApoiadorForm } from "../apoiador-form";
-import { Button } from "@/components/ui/button";
 import { ExcluirApoiadorButton } from "./excluir-button";
 import { StatusApoioBadge } from "@/components/app/status-badge";
 import { AvatarInitials } from "@/components/app/avatar-initials";
 import { TrilhaAuditoria } from "@/components/app/trilha-auditoria";
 import { resolverUsuariosAuditoria } from "@/lib/auditoria";
 import { fmtData } from "@/lib/utils/formatters";
+import { getBairrosComSetor } from "@/lib/localidades/get-localidades";
 
 export default async function ApoiadorDetalhePage({ params }: { params: { id: string } }) {
   const supabase = createClient();
 
-  const [apoiadorRes, liderancasRes, tagsRes] = await Promise.all([
+  const [apoiadorRes, liderancasRes, tagsRes, bairros] = await Promise.all([
     supabase.from("apoiadores").select("*").eq("id", params.id).maybeSingle(),
     supabase.from("liderancas").select("id, nome, municipio").order("nome"),
     supabase.from("apoiador_tags").select("tag").eq("apoiador_id", params.id),
+    getBairrosComSetor(),
   ]);
 
   if (apoiadorRes.error || !apoiadorRes.data) notFound();
@@ -71,6 +72,7 @@ export default async function ApoiadorDetalhePage({ params }: { params: { id: st
             modo="editar"
             id={a.id}
             liderancas={liderancas}
+            bairros={bairros}
             inicial={{
               nome: a.nome,
               cpf: a.cpf,
@@ -82,6 +84,8 @@ export default async function ApoiadorDetalhePage({ params }: { params: { id: st
               nascimento: a.nascimento,
               endereco: a.endereco,
               bairro: a.bairro,
+              bairro_id: a.bairro_id,
+              setor_id: a.setor_id,
               municipio: a.municipio,
               cep: a.cep,
               lider_id: a.lider_id,

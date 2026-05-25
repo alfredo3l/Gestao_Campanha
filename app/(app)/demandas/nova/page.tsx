@@ -7,14 +7,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { DemandaForm } from "../demanda-form";
 import { EmptyState } from "@/components/app/empty-state";
 import { Button } from "@/components/ui/button";
+import { getBairrosComSetor } from "@/lib/localidades/get-localidades";
 
 export const metadata = { title: "Nova demanda" };
 
 export default async function NovaDemandaPage() {
   const supabase = createClient();
-  const [lideRes, apoiaRes] = await Promise.all([
+  const [lideRes, apoiaRes, bairros] = await Promise.all([
     supabase.from("liderancas").select("id, nome, municipio").eq("ativa", true).order("nome"),
     supabase.from("apoiadores").select("id, nome").order("nome").limit(500),
+    getBairrosComSetor(),
   ]);
 
   return (
@@ -44,7 +46,12 @@ export default async function NovaDemandaPage() {
               }
             />
           ) : (
-            <DemandaForm modo="novo" liderancas={lideRes.data} apoiadores={apoiaRes.data ?? []} />
+            <DemandaForm
+              modo="novo"
+              liderancas={lideRes.data}
+              apoiadores={apoiaRes.data ?? []}
+              bairros={bairros}
+            />
           )}
         </CardContent>
       </Card>

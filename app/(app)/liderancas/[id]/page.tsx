@@ -4,6 +4,7 @@ import { ArrowLeft, Mail, Phone, MapPin } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { getCargosLider, getCargosLiderMap } from "@/lib/cargos/get-cargos";
+import { getBairrosComSetor } from "@/lib/localidades/get-localidades";
 import { PageHeader } from "@/components/app/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -28,23 +29,31 @@ import { ExcluirLiderancaButton } from "./excluir-button";
 export default async function LiderancaDetalhePage({ params }: { params: { id: string } }) {
   const supabase = createClient();
 
-  const [liderancaRes, progressoRes, apoiadoresRes, demandasRes, cargos, cargosMap] =
-    await Promise.all([
-      supabase.from("liderancas").select("*").eq("id", params.id).maybeSingle(),
-      supabase.from("v_progresso_lideranca").select("*").eq("id", params.id).maybeSingle(),
-      supabase
-        .from("apoiadores")
-        .select("id, nome, foto_path, municipio, bairro, status, tel, created_at")
-        .eq("lider_id", params.id)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("demandas")
-        .select("id, codigo, titulo, status, prioridade, prazo, created_at")
-        .eq("lider_id", params.id)
-        .order("created_at", { ascending: false }),
-      getCargosLider(),
-      getCargosLiderMap(),
-    ]);
+  const [
+    liderancaRes,
+    progressoRes,
+    apoiadoresRes,
+    demandasRes,
+    cargos,
+    cargosMap,
+    bairros,
+  ] = await Promise.all([
+    supabase.from("liderancas").select("*").eq("id", params.id).maybeSingle(),
+    supabase.from("v_progresso_lideranca").select("*").eq("id", params.id).maybeSingle(),
+    supabase
+      .from("apoiadores")
+      .select("id, nome, foto_path, municipio, bairro, status, tel, created_at")
+      .eq("lider_id", params.id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("demandas")
+      .select("id, codigo, titulo, status, prioridade, prazo, created_at")
+      .eq("lider_id", params.id)
+      .order("created_at", { ascending: false }),
+    getCargosLider(),
+    getCargosLiderMap(),
+    getBairrosComSetor(),
+  ]);
 
   if (liderancaRes.error || !liderancaRes.data) notFound();
 
@@ -160,11 +169,14 @@ export default async function LiderancaDetalhePage({ params }: { params: { id: s
                 modo="editar"
                 id={lider.id}
                 cargos={cargosAtivos}
+                bairros={bairros}
                 inicial={{
                   nome: lider.nome,
                   cargo: lider.cargo,
                   municipio: lider.municipio,
                   bairro: lider.bairro,
+                  bairro_id: lider.bairro_id,
+                  setor_id: lider.setor_id,
                   tel: lider.tel,
                   email: lider.email,
                   meta_votos: lider.meta_votos,

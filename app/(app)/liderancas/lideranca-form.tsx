@@ -17,6 +17,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { MunicipioCombobox } from "@/components/ui/municipio-combobox";
+import {
+  BairroCombobox,
+  type BairroOption,
+} from "@/components/ui/bairro-combobox";
 import { FotoUpload } from "@/components/app/foto-upload";
 import {
   criarLideranca,
@@ -34,11 +38,14 @@ interface Props {
   id?: string;
   /** Cargos disponíveis no momento (já filtrados por `ativo` na origem). */
   cargos: CargoOpcao[];
+  bairros: BairroOption[];
   inicial?: {
     nome: string;
     cargo: string;
     municipio: string;
     bairro: string | null;
+    bairro_id?: string | null;
+    setor_id?: string | null;
     tel: string | null;
     email: string | null;
     meta_votos: number;
@@ -56,7 +63,7 @@ function SubmitButton({ modo }: { modo: "novo" | "editar" }) {
   );
 }
 
-export function LiderancaForm({ modo, id, cargos, inicial }: Props) {
+export function LiderancaForm({ modo, id, cargos, bairros, inicial }: Props) {
   const router = useRouter();
   const action =
     modo === "novo"
@@ -65,6 +72,7 @@ export function LiderancaForm({ modo, id, cargos, inicial }: Props) {
   const [state, formAction] = useFormState<ActionState, FormData>(action, {});
 
   const [nome, setNome] = useState(inicial?.nome ?? "");
+  const [municipio, setMunicipio] = useState<string>(inicial?.municipio ?? "Três Lagoas");
   const [fotoPath, setFotoPath] = useState<string | null>(inicial?.foto_path ?? null);
 
   // Se estamos editando e o cargo atual (ex.: cargo inativado depois) não
@@ -149,11 +157,20 @@ export function LiderancaForm({ modo, id, cargos, inicial }: Props) {
             required
             defaultValue={inicial?.municipio}
             semPadrao={modo === "editar"}
+            onValueChange={setMunicipio}
           />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="bairro">Bairro / Localidade</Label>
-          <Input id="bairro" name="bairro" defaultValue={inicial?.bairro ?? ""} maxLength={80} />
+          <BairroCombobox
+            id="bairro"
+            name="bairro"
+            options={bairros}
+            municipio={municipio}
+            defaultValue={inicial?.bairro ?? ""}
+            defaultBairroId={inicial?.bairro_id ?? null}
+            defaultSetorId={inicial?.setor_id ?? null}
+          />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="tel">Telefone / WhatsApp</Label>
