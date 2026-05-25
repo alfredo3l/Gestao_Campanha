@@ -4,7 +4,7 @@ import { ArrowLeft, Mail, Phone, MapPin } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { getCargosLider, getCargosLiderMap } from "@/lib/cargos/get-cargos";
-import { getBairrosComSetor } from "@/lib/localidades/get-localidades";
+import { getBairrosComSetor, getSetores } from "@/lib/localidades/get-localidades";
 import { PageHeader } from "@/components/app/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -34,9 +34,11 @@ export default async function LiderancaDetalhePage({ params }: { params: { id: s
     progressoRes,
     apoiadoresRes,
     demandasRes,
+    liderancaSetoresRes,
     cargos,
     cargosMap,
     bairros,
+    setores,
   ] = await Promise.all([
     supabase.from("liderancas").select("*").eq("id", params.id).maybeSingle(),
     supabase.from("v_progresso_lideranca").select("*").eq("id", params.id).maybeSingle(),
@@ -50,9 +52,14 @@ export default async function LiderancaDetalhePage({ params }: { params: { id: s
       .select("id, codigo, titulo, status, prioridade, prazo, created_at")
       .eq("lider_id", params.id)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("lideranca_setores")
+      .select("setor_id")
+      .eq("lideranca_id", params.id),
     getCargosLider(),
     getCargosLiderMap(),
     getBairrosComSetor(),
+    getSetores(),
   ]);
 
   if (liderancaRes.error || !liderancaRes.data) notFound();
@@ -61,6 +68,12 @@ export default async function LiderancaDetalhePage({ params }: { params: { id: s
   const prog = progressoRes.data;
   const apoiadores = apoiadoresRes.data ?? [];
   const demandas = demandasRes.data ?? [];
+  const setorIdsVinculados = (liderancaSetoresRes.data ?? []).map((r) => r.setor_id);
+  const setoresMap = new Map(setores.map((s) => [s.id, s]));
+  const setoresVinculados = setorIdsVinculados
+    .map((sid) => setoresMap.get(sid))
+    .filter((s): s is NonNullable<typeof s> => Boolean(s))
+    .sort((a, b) => a.numero - b.numero);
   const cargosAtivos = cargos
     .filter((c) => c.ativo)
     .map((c) => ({ value: c.value, label: c.label }));
@@ -121,6 +134,22 @@ export default async function LiderancaDetalhePage({ params }: { params: { id: s
                 {lider.email ?? "—"}
               </Info>
               <Info label="Cadastrada em">{fmtData(lider.created_at)}</Info>
+              <div className="md:col-span-2">
+                <Info label="Setores de atuação">
+                  {setoresVinculados.length === 0 ? (
+                    <span className="text-ink-500">—</span>
+                  ) : (
+                    <span className="flex flex-wrap gap-1.5">
+                      {setoresVinculados.map((s) => (
+                        <Badge key={s.id} variant="secondary" className="font-normal">
+                          Setor {s.numero}
+                          {s.nome && s.nome !== `Setor ${s.numero}` ? ` · ${s.nome}` : ""}
+                        </Badge>
+                      ))}
+                    </span>
+                  )}
+                </Info>
+              </div>
             </div>
             <TrilhaAuditoria
               createdAt={lider.created_at}
@@ -170,6 +199,7 @@ export default async function LiderancaDetalhePage({ params }: { params: { id: s
                 id={lider.id}
                 cargos={cargosAtivos}
                 bairros={bairros}
+                setores={setores}
                 inicial={{
                   nome: lider.nome,
                   cargo: lider.cargo,
@@ -177,6 +207,7 @@ export default async function LiderancaDetalhePage({ params }: { params: { id: s
                   bairro: lider.bairro,
                   bairro_id: lider.bairro_id,
                   setor_id: lider.setor_id,
+                  setor_ids: setorIdsVinculados,
                   tel: lider.tel,
                   email: lider.email,
                   meta_votos: lider.meta_votos,

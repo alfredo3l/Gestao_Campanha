@@ -38,6 +38,14 @@ export const liderancaSchema = z.object({
     .or(z.literal(""))
     .transform((v) => (v ? v : null))
     .nullable(),
+  /**
+   * IDs dos setores associados à liderança (N:N — migration 0012).
+   * Aceita 0..N setores. Duplicatas são descartadas no servidor.
+   */
+  setor_ids: z
+    .array(z.string().uuid("Setor inválido"))
+    .default([])
+    .transform((arr) => Array.from(new Set(arr))),
   tel: z.string().trim().max(20).optional().or(z.literal("")),
   email: z.string().trim().email("E-mail inválido").max(120).optional().or(z.literal("")),
   meta_votos: z.coerce.number().int().min(0, "Meta não pode ser negativa").max(1_000_000),

@@ -1,7 +1,7 @@
 "use client";
 
 import { useFormState, useFormStatus } from "react-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -21,6 +21,7 @@ import {
   BairroCombobox,
   type BairroOption,
 } from "@/components/ui/bairro-combobox";
+import { MultiFilterCombobox } from "@/components/ui/multi-filter-combobox";
 import { FotoUpload } from "@/components/app/foto-upload";
 import {
   criarLideranca,
@@ -33,12 +34,22 @@ export interface CargoOpcao {
   label: string;
 }
 
+export interface SetorOpcao {
+  id: string;
+  numero: number;
+  nome: string;
+  municipio: string;
+  ativo: boolean;
+}
+
 interface Props {
   modo: "novo" | "editar";
   id?: string;
   /** Cargos disponíveis no momento (já filtrados por `ativo` na origem). */
   cargos: CargoOpcao[];
   bairros: BairroOption[];
+  /** Setores disponíveis (inclui inativos para preservar vínculos antigos). */
+  setores: SetorOpcao[];
   inicial?: {
     nome: string;
     cargo: string;
@@ -46,6 +57,8 @@ interface Props {
     bairro: string | null;
     bairro_id?: string | null;
     setor_id?: string | null;
+    /** IDs dos setores já vinculados (relação N:N — migration 0012). */
+    setor_ids?: string[];
     tel: string | null;
     email: string | null;
     meta_votos: number;
@@ -63,7 +76,7 @@ function SubmitButton({ modo }: { modo: "novo" | "editar" }) {
   );
 }
 
-export function LiderancaForm({ modo, id, cargos, bairros, inicial }: Props) {
+export function LiderancaForm({ modo, id, cargos, bairros, setores, inicial }: Props) {
   const router = useRouter();
   const action =
     modo === "novo"
@@ -74,6 +87,30 @@ export function LiderancaForm({ modo, id, cargos, bairros, inicial }: Props) {
   const [nome, setNome] = useState(inicial?.nome ?? "");
   const [municipio, setMunicipio] = useState<string>(inicial?.municipio ?? "Três Lagoas");
   const [fotoPath, setFotoPath] = useState<string | null>(inicial?.foto_path ?? null);
+  const [setorIds, setSetorIds] = useState<string[]>(inicial?.setor_ids ?? []);
+
+  /**
+   * Mostra os setores do município corrente; mantém inativos apenas se já
+   * vinculados (para não perder o registro ao editar).
+   */
+  const opcoesSetor = useMemo(() => {
+    const norm = (s: string) =>
+      s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().trim();
+    const muniNorm = norm(municipio);
+    return setores
+      .filter((s) =>
+        muniNorm ? norm(s.municipio) === muniNorm : true
+      )
+      .filter((s) => s.ativo || setorIds.includes(s.id))
+      .sort((a, b) => a.numero - b.numero)
+      .map((s) => ({
+        value: s.id,
+        label: `Setor ${s.numero}${
+          s.nome && s.nome !== `Setor ${s.numero}` ? ` · ${s.nome}` : ""
+        }${s.ativo ? "" : " (inativo)"}`,
+        hint: s.municipio,
+      }));
+  }, [setores, municipio, setorIds]);
 
   // Se estamos editando e o cargo atual (ex.: cargo inativado depois) não
   // estiver mais na lista, mantemos a opção visível para não perder o vínculo.
@@ -95,6 +132,9 @@ export function LiderancaForm({ modo, id, cargos, bairros, inicial }: Props) {
   return (
     <form action={formAction} className="space-y-6">
       <input type="hidden" name="foto_path" value={fotoPath ?? ""} />
+      {setorIds.map((sid) => (
+        <input key={sid} type="hidden" name="setor_ids" value={sid} />
+      ))}
 
       {modo === "editar" && id && (
         <div className="flex flex-col gap-2 rounded-lg border border-ink-200 bg-ink-50/40 p-4">
@@ -171,6 +211,27 @@ export function LiderancaForm({ modo, id, cargos, bairros, inicial }: Props) {
             defaultBairroId={inicial?.bairro_id ?? null}
             defaultSetorId={inicial?.setor_id ?? null}
           />
+        </div>
+        <div className="md:col-span-2 space-y-1.5">
+          <Label htmlFor="setores">Setores de atuação</Label>
+          <MultiFilterCombobox
+            options={opcoesSetor}
+            value={setorIds}
+            onChange={setSetorIds}
+            placeholder="Selecione um ou mais setores…"
+            searchPlaceholder="Buscar setor pelo número ou nome…"
+            emptyMessage={
+              opcoesSetor.length === 0
+                ? `Nenhum setor cadastrado para ${municipio || "este município"}.`
+                : "Nenhum setor encontrado."
+            }
+            ariaLabel="Setores de atuação"
+            countLabel={(n) => `${n} ${n === 1 ? "setor" : "setores"}`}
+          />
+          <p className="text-2xs text-ink-500">
+            Uma liderança pode atender múltiplos setores. Selecione todos os
+            setores em que ela atua.
+          </p>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="tel">Telefone / WhatsApp</Label>

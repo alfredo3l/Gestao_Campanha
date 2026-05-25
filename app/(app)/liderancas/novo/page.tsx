@@ -4,15 +4,16 @@ import { ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/app/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCargosLider } from "@/lib/cargos/get-cargos";
-import { getBairrosComSetor } from "@/lib/localidades/get-localidades";
+import { getBairrosComSetor, getSetores } from "@/lib/localidades/get-localidades";
 import { LiderancaForm } from "../lideranca-form";
 
 export const metadata = { title: "Nova liderança" };
 
 export default async function NovaLiderancaPage() {
-  const [cargosRaw, bairros] = await Promise.all([
+  const [cargosRaw, bairros, setores] = await Promise.all([
     getCargosLider(),
     getBairrosComSetor(),
+    getSetores(),
   ]);
   const cargos = cargosRaw
     .filter((c) => c.ativo)
@@ -34,7 +35,12 @@ export default async function NovaLiderancaPage() {
       />
       <Card>
         <CardContent className="pt-6">
-          <LiderancaForm modo="novo" cargos={cargos} bairros={bairros} />
+          <LiderancaForm
+            modo="novo"
+            cargos={cargos}
+            bairros={bairros}
+            setores={setores}
+          />
         </CardContent>
       </Card>
     </div>

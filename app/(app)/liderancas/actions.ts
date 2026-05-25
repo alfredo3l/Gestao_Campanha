@@ -8,6 +8,64 @@ import { liderancaSchema, type LiderancaInput } from "@/lib/validations/lideranc
 
 export type ActionState = { error?: string; ok?: boolean };
 
+/**
+ * Lê todos os IDs de setor enviados no FormData (campo `setor_ids` aparece
+ * múltiplas vezes — um <input hidden> por setor selecionado).
+ */
+function extrairSetorIds(formData: FormData): string[] {
+  return formData
+    .getAll("setor_ids")
+    .map((v) => String(v))
+    .filter((v) => v.length > 0);
+}
+
+/**
+ * Sincroniza a tabela N:N `lideranca_setores`: insere os novos, remove os que
+ * não estão mais selecionados. Usa um diff em memória para evitar reescrita
+ * desnecessária e disparos extras de auditoria.
+ */
+async function sincronizarSetores(
+  supabase: ReturnType<typeof createClient>,
+  liderancaId: string,
+  setorIdsDesejados: string[]
+): Promise<{ error?: string }> {
+  const desejados = new Set(setorIdsDesejados);
+
+  const { data: atuaisRows, error: selErr } = await supabase
+    .from("lideranca_setores")
+    .select("setor_id")
+    .eq("lideranca_id", liderancaId);
+  if (selErr) return { error: selErr.message };
+
+  const atuais = new Set((atuaisRows ?? []).map((r) => r.setor_id));
+
+  const paraInserir = [...desejados].filter((s) => !atuais.has(s));
+  const paraRemover = [...atuais].filter((s) => !desejados.has(s));
+
+  if (paraInserir.length > 0) {
+    const { error } = await supabase
+      .from("lideranca_setores")
+      .insert(
+        paraInserir.map((setor_id) => ({
+          lideranca_id: liderancaId,
+          setor_id,
+        }))
+      );
+    if (error) return { error: error.message };
+  }
+
+  if (paraRemover.length > 0) {
+    const { error } = await supabase
+      .from("lideranca_setores")
+      .delete()
+      .eq("lideranca_id", liderancaId)
+      .in("setor_id", paraRemover);
+    if (error) return { error: error.message };
+  }
+
+  return {};
+}
+
 export async function criarLideranca(_: ActionState, formData: FormData): Promise<ActionState> {
   const supabase = createClient();
   const {
@@ -22,6 +80,7 @@ export async function criarLideranca(_: ActionState, formData: FormData): Promis
     bairro: formData.get("bairro") || "",
     bairro_id: formData.get("bairro_id") || "",
     setor_id: formData.get("setor_id") || "",
+    setor_ids: extrairSetorIds(formData),
     tel: formData.get("tel") || "",
     email: formData.get("email") || "",
     meta_votos: formData.get("meta_votos") || 0,
@@ -33,6 +92,10 @@ export async function criarLideranca(_: ActionState, formData: FormData): Promis
   }
 
   const payload = parsed.data;
+  // Mantém compat: se vier algum setor selecionado e o setor_id legado não
+  // estiver preenchido, replica o primeiro como "setor principal" (legado).
+  const setorPrincipal =
+    payload.setor_id ?? (payload.setor_ids.length > 0 ? payload.setor_ids[0] : null);
 
   const { data, error } = await supabase
     .from("liderancas")
@@ -42,7 +105,7 @@ export async function criarLideranca(_: ActionState, formData: FormData): Promis
       municipio: payload.municipio,
       bairro: payload.bairro || null,
       bairro_id: payload.bairro_id,
-      setor_id: payload.setor_id,
+      setor_id: setorPrincipal,
       tel: payload.tel || null,
       email: payload.email || null,
       meta_votos: payload.meta_votos,
@@ -54,6 +117,9 @@ export async function criarLideranca(_: ActionState, formData: FormData): Promis
     .single();
 
   if (error) return { error: error.message };
+
+  const sincErr = await sincronizarSetores(supabase, data.id, payload.setor_ids);
+  if (sincErr.error) return { error: sincErr.error };
 
   revalidatePath("/liderancas");
   redirect(`/liderancas/${data.id}`);
@@ -73,6 +139,7 @@ export async function atualizarLideranca(
     bairro: formData.get("bairro") || "",
     bairro_id: formData.get("bairro_id") || "",
     setor_id: formData.get("setor_id") || "",
+    setor_ids: extrairSetorIds(formData),
     tel: formData.get("tel") || "",
     email: formData.get("email") || "",
     meta_votos: formData.get("meta_votos") || 0,
@@ -83,6 +150,8 @@ export async function atualizarLideranca(
     return { error: parsed.error.issues.map((i) => i.message).join(" · ") };
   }
   const p: LiderancaInput = parsed.data;
+  const setorPrincipal =
+    p.setor_id ?? (p.setor_ids.length > 0 ? p.setor_ids[0] : null);
 
   const { error } = await supabase
     .from("liderancas")
@@ -92,7 +161,7 @@ export async function atualizarLideranca(
       municipio: p.municipio,
       bairro: p.bairro || null,
       bairro_id: p.bairro_id,
-      setor_id: p.setor_id,
+      setor_id: setorPrincipal,
       tel: p.tel || null,
       email: p.email || null,
       meta_votos: p.meta_votos,
@@ -102,6 +171,9 @@ export async function atualizarLideranca(
     .eq("id", id);
 
   if (error) return { error: error.message };
+
+  const sincErr = await sincronizarSetores(supabase, id, p.setor_ids);
+  if (sincErr.error) return { error: sincErr.error };
 
   revalidatePath("/liderancas");
   revalidatePath(`/liderancas/${id}`);

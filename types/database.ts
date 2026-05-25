@@ -312,6 +312,35 @@ export type Database = {
           }
         ];
       };
+      lideranca_setores: {
+        Row: {
+          lideranca_id: string;
+          setor_id: string;
+          created_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          lideranca_id: string;
+          setor_id: string;
+          created_at?: string;
+          created_by?: string | null;
+        };
+        Update: Partial<Database["campanha"]["Tables"]["lideranca_setores"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "lideranca_setores_lideranca_id_fkey";
+            columns: ["lideranca_id"];
+            referencedRelation: "liderancas";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "lideranca_setores_setor_id_fkey";
+            columns: ["setor_id"];
+            referencedRelation: "setores";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       metas_regiao: {
         Row: {
           id: string;
@@ -483,10 +512,21 @@ export type Database = {
           cargo: string;
           municipio: string;
           bairro: string | null;
+          /** Adicionado na migration 0013 (busca textual em /liderancas). */
+          tel: string | null;
+          /** Adicionado na migration 0013 (busca textual em /liderancas). */
+          email: string | null;
           meta_votos: number;
           ativa: boolean;
           profile_id: string | null;
           foto_path: string | null;
+          /** Array JSON: [{ id, numero, nome, cor }] — migration 0012. */
+          setores: Array<{
+            id: string;
+            numero: number;
+            nome: string;
+            cor: string | null;
+          }>;
           apoiadores_total: number;
           apoiadores_confirmados: number;
           votos_projetados: number;
