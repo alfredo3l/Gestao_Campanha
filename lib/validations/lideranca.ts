@@ -50,6 +50,15 @@ export const liderancaSchema = z.object({
   email: z.string().trim().email("E-mail inválido").max(120).optional().or(z.literal("")),
   meta_votos: z.coerce.number().int().min(0, "Meta não pode ser negativa").max(1_000_000),
   ativa: z.boolean().default(true),
+  /** Texto livre — anotações do operador (perfil, histórico, particularidades). */
+  observacoes: z
+    .string()
+    .trim()
+    .max(2000, "Observações: limite de 2000 caracteres")
+    .optional()
+    .or(z.literal(""))
+    .transform((v) => (v ? v : null))
+    .nullable(),
   profile_id: z.string().uuid().nullable().optional(),
   /** Caminho relativo no bucket `campanha-fotos`. NULL/'' = sem foto. */
   foto_path: z

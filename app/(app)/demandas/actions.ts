@@ -4,25 +4,92 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
-import { demandaSchema, movimentacaoSchema } from "@/lib/validations/demanda";
+import {
+  demandaSchema,
+  movimentacaoSchema,
+  type SolicitanteInput,
+} from "@/lib/validations/demanda";
 
 export type ActionState = { error?: string; ok?: boolean };
 
+/**
+ * Constrói o objeto bruto do solicitante a partir do FormData. O formulário
+ * envia `solicitante_tipo` + um conjunto de campos específicos por tipo.
+ * A validação real (presença de ID, formato, etc.) é feita pelo Zod
+ * discriminated union em `solicitanteSchema`.
+ */
+function buildSolicitanteRaw(formData: FormData): unknown {
+  const tipo = String(formData.get("solicitante_tipo") ?? "apoiador");
+  if (tipo === "lideranca") {
+    return {
+      tipo: "lideranca",
+      lider_id: formData.get("solicitante_lider_id") || "",
+    };
+  }
+  if (tipo === "avulso") {
+    return {
+      tipo: "avulso",
+      nome: formData.get("solicitante_nome") || "",
+      tel: formData.get("solicitante_tel") || "",
+      bairro: formData.get("solicitante_bairro") || "",
+    };
+  }
+  return {
+    tipo: "apoiador",
+    apoiador_id: formData.get("solicitante_apoiador_id") || "",
+  };
+}
+
 function parse(formData: FormData) {
-  const sol = String(formData.get("solicitante_id") ?? "");
   return demandaSchema.safeParse({
     titulo: formData.get("titulo"),
     descricao: formData.get("descricao") || "",
     categoria: formData.get("categoria"),
     prioridade: formData.get("prioridade") || "media",
     status: formData.get("status") || "aberta",
-    solicitante_id: sol && sol !== "none" ? sol : null,
+    solicitante: buildSolicitanteRaw(formData),
     lider_id: formData.get("lider_id"),
     bairro: formData.get("bairro") || "",
     bairro_id: formData.get("bairro_id") || "",
     setor_id: formData.get("setor_id") || "",
     prazo: formData.get("prazo") || "",
   });
+}
+
+/**
+ * Mapeia o objeto validado do solicitante para as colunas físicas da tabela
+ * `campanha.demandas`. O CHECK constraint do banco impõe que exatamente um
+ * conjunto de colunas esteja preenchido por tipo.
+ */
+function mapSolicitanteParaColunas(s: SolicitanteInput) {
+  if (s.tipo === "apoiador") {
+    return {
+      solicitante_tipo: "apoiador" as const,
+      solicitante_id: s.apoiador_id,
+      solicitante_lider_id: null,
+      solicitante_nome: null,
+      solicitante_tel: null,
+      solicitante_bairro: null,
+    };
+  }
+  if (s.tipo === "lideranca") {
+    return {
+      solicitante_tipo: "lideranca" as const,
+      solicitante_id: null,
+      solicitante_lider_id: s.lider_id,
+      solicitante_nome: null,
+      solicitante_tel: null,
+      solicitante_bairro: null,
+    };
+  }
+  return {
+    solicitante_tipo: "avulso" as const,
+    solicitante_id: null,
+    solicitante_lider_id: null,
+    solicitante_nome: s.nome,
+    solicitante_tel: s.tel,
+    solicitante_bairro: s.bairro,
+  };
 }
 
 export async function criarDemanda(_: ActionState, formData: FormData): Promise<ActionState> {
@@ -37,6 +104,7 @@ export async function criarDemanda(_: ActionState, formData: FormData): Promise<
     return { error: parsed.error.issues.map((i) => i.message).join(" · ") };
   }
   const p = parsed.data;
+  const sol = mapSolicitanteParaColunas(p.solicitante);
 
   const { data, error } = await supabase
     .from("demandas")
@@ -46,7 +114,7 @@ export async function criarDemanda(_: ActionState, formData: FormData): Promise<
       categoria: p.categoria,
       prioridade: p.prioridade,
       status: p.status,
-      solicitante_id: p.solicitante_id || null,
+      ...sol,
       lider_id: p.lider_id,
       bairro: p.bairro || null,
       bairro_id: p.bairro_id,
@@ -75,6 +143,7 @@ export async function atualizarDemanda(
     return { error: parsed.error.issues.map((i) => i.message).join(" · ") };
   }
   const p = parsed.data;
+  const sol = mapSolicitanteParaColunas(p.solicitante);
 
   const { error } = await supabase
     .from("demandas")
@@ -84,7 +153,7 @@ export async function atualizarDemanda(
       categoria: p.categoria,
       prioridade: p.prioridade,
       status: p.status,
-      solicitante_id: p.solicitante_id || null,
+      ...sol,
       lider_id: p.lider_id,
       bairro: p.bairro || null,
       bairro_id: p.bairro_id,

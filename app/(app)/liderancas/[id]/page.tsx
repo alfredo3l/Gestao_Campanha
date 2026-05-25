@@ -212,6 +212,7 @@ export default async function LiderancaDetalhePage({ params }: { params: { id: s
                   email: lider.email,
                   meta_votos: lider.meta_votos,
                   ativa: lider.ativa,
+                  observacoes: lider.observacoes,
                   foto_path: lider.foto_path,
                 }}
               />

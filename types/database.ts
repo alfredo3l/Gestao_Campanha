@@ -81,6 +81,8 @@ export type Database = {
           email: string | null;
           meta_votos: number;
           ativa: boolean;
+          /** Anotações livres do operador — migration 0014. */
+          observacoes: string | null;
           profile_id: string | null;
           /** Caminho no bucket `campanha-fotos` (migration 0010). */
           foto_path: string | null;
@@ -102,6 +104,7 @@ export type Database = {
           email?: string | null;
           meta_votos?: number;
           ativa?: boolean;
+          observacoes?: string | null;
           profile_id?: string | null;
           foto_path?: string | null;
           created_at?: string;
@@ -379,7 +382,18 @@ export type Database = {
           categoria: string;
           prioridade: Database["campanha"]["Enums"]["prioridade"];
           status: Database["campanha"]["Enums"]["status_demanda"];
+          /** Solicitante apoiador — preenchido quando solicitante_tipo='apoiador'. */
           solicitante_id: string | null;
+          /** Discriminador do solicitante (migration `demanda_solicitante_polimorfico`). */
+          solicitante_tipo: Database["campanha"]["Enums"]["tipo_solicitante"];
+          /** Solicitante liderança — preenchido quando solicitante_tipo='lideranca'. */
+          solicitante_lider_id: string | null;
+          /** Nome livre do solicitante avulso. */
+          solicitante_nome: string | null;
+          /** Telefone do solicitante avulso (opcional). */
+          solicitante_tel: string | null;
+          /** Bairro informado pelo solicitante avulso (opcional). */
+          solicitante_bairro: string | null;
           lider_id: string;
           /** Texto retro-compat — migration 0012. */
           bairro: string | null;
@@ -404,6 +418,11 @@ export type Database = {
           prioridade?: Database["campanha"]["Enums"]["prioridade"];
           status?: Database["campanha"]["Enums"]["status_demanda"];
           solicitante_id?: string | null;
+          solicitante_tipo: Database["campanha"]["Enums"]["tipo_solicitante"];
+          solicitante_lider_id?: string | null;
+          solicitante_nome?: string | null;
+          solicitante_tel?: string | null;
+          solicitante_bairro?: string | null;
           lider_id: string;
           bairro?: string | null;
           bairro_id?: string | null;
@@ -427,6 +446,12 @@ export type Database = {
             foreignKeyName: "demandas_solicitante_id_fkey";
             columns: ["solicitante_id"];
             referencedRelation: "apoiadores";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "demandas_solicitante_lider_id_fkey";
+            columns: ["solicitante_lider_id"];
+            referencedRelation: "liderancas";
             referencedColumns: ["id"];
           },
           {
@@ -518,6 +543,8 @@ export type Database = {
           email: string | null;
           meta_votos: number;
           ativa: boolean;
+          /** Adicionado na migration 0015 (exibido na tabela /liderancas). */
+          observacoes: string | null;
           profile_id: string | null;
           foto_path: string | null;
           /** Array JSON: [{ id, numero, nome, cor }] — migration 0012. */
@@ -584,6 +611,8 @@ export type Database = {
       // cargos vivem em `campanha.cargos_lider` (text + FK).
       status_demanda: "aberta" | "andamento" | "resolvida" | "cancelada";
       prioridade: "baixa" | "media" | "alta" | "urgente";
+      /** Discriminador do solicitante da demanda. */
+      tipo_solicitante: "apoiador" | "lideranca" | "avulso";
     };
     CompositeTypes: Record<string, never>;
   };

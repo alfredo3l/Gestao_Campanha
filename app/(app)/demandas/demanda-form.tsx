@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
+import { User, Megaphone, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -21,8 +22,22 @@ import {
   type BairroOption,
 } from "@/components/ui/bairro-combobox";
 import { MunicipioCombobox } from "@/components/ui/municipio-combobox";
+import { cn } from "@/lib/utils/cn";
 import { criarDemanda, atualizarDemanda, type ActionState } from "./actions";
-import type { Prioridade, StatusDemanda } from "@/lib/validations/demanda";
+import type {
+  Prioridade,
+  StatusDemanda,
+  TipoSolicitante,
+} from "@/lib/validations/demanda";
+
+export interface DemandaSolicitanteInicial {
+  tipo: TipoSolicitante;
+  apoiador_id?: string | null;
+  lider_id?: string | null;
+  nome?: string | null;
+  tel?: string | null;
+  bairro?: string | null;
+}
 
 interface Inicial {
   titulo: string;
@@ -30,7 +45,7 @@ interface Inicial {
   categoria: string;
   prioridade: Prioridade;
   status: StatusDemanda;
-  solicitante_id: string | null;
+  solicitante: DemandaSolicitanteInicial;
   lider_id: string;
   bairro?: string | null;
   bairro_id?: string | null;
@@ -86,6 +101,10 @@ export function DemandaForm({
 
   const [municipio, setMunicipio] = useState<string>(
     inicial?.municipio ?? "Três Lagoas"
+  );
+
+  const [tipoSolicitante, setTipoSolicitante] = useState<TipoSolicitante>(
+    inicial?.solicitante.tipo ?? "apoiador"
   );
 
   useEffect(() => {
@@ -162,22 +181,127 @@ export function DemandaForm({
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="solicitante_id">Solicitante (apoiador)</Label>
-          <Select name="solicitante_id" defaultValue={inicial?.solicitante_id ?? "none"}>
-            <SelectTrigger id="solicitante_id">
-              <SelectValue placeholder="Sem vínculo" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">Sem vínculo direto</SelectItem>
-              {apoiadores.map((a) => (
-                <SelectItem key={a.id} value={a.id}>
-                  {a.nome}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="space-y-2 md:col-span-2">
+          <Label className="text-2xs font-semibold uppercase tracking-wide text-ink-500">
+            Solicitante *
+          </Label>
+          <p className="text-2xs text-ink-500">
+            Quem está pedindo essa demanda. Pode ser um apoiador ou liderança já
+            cadastrado, ou alguém ainda não cadastrado (avulso).
+          </p>
+          <input type="hidden" name="solicitante_tipo" value={tipoSolicitante} />
+
+          <div
+            role="radiogroup"
+            aria-label="Tipo de solicitante"
+            className="grid grid-cols-1 gap-2 sm:grid-cols-3"
+          >
+            <TipoSolicitanteChip
+              ativo={tipoSolicitante === "apoiador"}
+              onClick={() => setTipoSolicitante("apoiador")}
+              icon={<User className="h-3.5 w-3.5" />}
+              titulo="Apoiador"
+              descricao="Cadastrado na base"
+            />
+            <TipoSolicitanteChip
+              ativo={tipoSolicitante === "lideranca"}
+              onClick={() => setTipoSolicitante("lideranca")}
+              icon={<Megaphone className="h-3.5 w-3.5" />}
+              titulo="Liderança"
+              descricao="Cadastrada na base"
+            />
+            <TipoSolicitanteChip
+              ativo={tipoSolicitante === "avulso"}
+              onClick={() => setTipoSolicitante("avulso")}
+              icon={<UserPlus className="h-3.5 w-3.5" />}
+              titulo="Avulso"
+              descricao="Ainda não cadastrado"
+            />
+          </div>
+
+          {tipoSolicitante === "apoiador" && (
+            <div className="space-y-1.5 pt-1">
+              <Label htmlFor="solicitante_apoiador_id">Apoiador *</Label>
+              <Select
+                name="solicitante_apoiador_id"
+                defaultValue={inicial?.solicitante.apoiador_id ?? undefined}
+              >
+                <SelectTrigger id="solicitante_apoiador_id">
+                  <SelectValue placeholder="Selecione o apoiador" />
+                </SelectTrigger>
+                <SelectContent>
+                  {apoiadores.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {tipoSolicitante === "lideranca" && (
+            <div className="space-y-1.5 pt-1">
+              <Label htmlFor="solicitante_lider_id">Liderança *</Label>
+              <Select
+                name="solicitante_lider_id"
+                defaultValue={inicial?.solicitante.lider_id ?? undefined}
+              >
+                <SelectTrigger id="solicitante_lider_id">
+                  <SelectValue placeholder="Selecione a liderança" />
+                </SelectTrigger>
+                <SelectContent>
+                  {liderancas.map((l) => (
+                    <SelectItem key={l.id} value={l.id}>
+                      {l.nome} · {l.municipio}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {tipoSolicitante === "avulso" && (
+            <div className="grid grid-cols-1 gap-3 pt-1 md:grid-cols-2">
+              <div className="space-y-1.5 md:col-span-2">
+                <Label htmlFor="solicitante_nome">Nome do solicitante *</Label>
+                <Input
+                  id="solicitante_nome"
+                  name="solicitante_nome"
+                  required={tipoSolicitante === "avulso"}
+                  maxLength={120}
+                  defaultValue={inicial?.solicitante.nome ?? ""}
+                  placeholder="Ex.: Carlos Mendes"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="solicitante_tel">Telefone (opcional)</Label>
+                <Input
+                  id="solicitante_tel"
+                  name="solicitante_tel"
+                  maxLength={20}
+                  defaultValue={inicial?.solicitante.tel ?? ""}
+                  placeholder="(67) 99999-0000"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="solicitante_bairro">Bairro (opcional)</Label>
+                <Input
+                  id="solicitante_bairro"
+                  name="solicitante_bairro"
+                  maxLength={80}
+                  defaultValue={inicial?.solicitante.bairro ?? ""}
+                  placeholder="Ex.: Vila Piloto"
+                />
+              </div>
+              <p className="text-2xs text-ink-500 md:col-span-2">
+                Depois de criar a demanda você poderá converter este solicitante
+                em um apoiador cadastrado a partir da página de detalhes.
+              </p>
+            </div>
+          )}
         </div>
+
         <div className="space-y-1.5 md:col-span-2">
           <Label className="text-2xs font-semibold uppercase tracking-wide text-ink-500">
             Localidade (opcional)
@@ -228,5 +352,54 @@ export function DemandaForm({
         <SubmitButton modo={modo} />
       </div>
     </form>
+  );
+}
+
+function TipoSolicitanteChip({
+  ativo,
+  onClick,
+  icon,
+  titulo,
+  descricao,
+}: {
+  ativo: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  titulo: string;
+  descricao: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={ativo}
+      onClick={onClick}
+      className={cn(
+        "flex items-start gap-2 rounded-md border px-3 py-2 text-left transition-colors",
+        ativo
+          ? "border-brand-300 bg-brand-50/60 ring-1 ring-brand-200"
+          : "border-ink-200 bg-white hover:border-ink-300 hover:bg-ink-50"
+      )}
+    >
+      <span
+        className={cn(
+          "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
+          ativo ? "bg-brand-600 text-white" : "bg-ink-100 text-ink-600"
+        )}
+      >
+        {icon}
+      </span>
+      <span className="min-w-0">
+        <span
+          className={cn(
+            "block text-sm font-medium",
+            ativo ? "text-brand-900" : "text-ink-900"
+          )}
+        >
+          {titulo}
+        </span>
+        <span className="block text-2xs text-ink-500">{descricao}</span>
+      </span>
+    </button>
   );
 }

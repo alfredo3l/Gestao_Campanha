@@ -38,7 +38,7 @@ interface Search {
 }
 
 function parseView(raw: string | undefined): ViewMode {
-  return raw === "tabela" ? "tabela" : "cards";
+  return raw === "cards" ? "cards" : "tabela";
 }
 
 /** Lê parâmetro multi-valor (CSV) — suporta filtros do tipo "in (...)". */
@@ -235,6 +235,8 @@ type Lideranca = {
   meta_votos: number;
   ativa: boolean;
   foto_path: string | null;
+  /** Anotações livres — exibidas truncadas com tooltip (migration 0015). */
+  observacoes: string | null;
   /** Lista de setores vinculados (N:N — migration 0012). */
   setores: SetorVinculado[] | null;
   apoiadores_total: number;
@@ -245,6 +247,25 @@ type Lideranca = {
 
 function progressTone(pct: number): "brand" | "amber" | "red" | "green" {
   return pct >= 100 ? "green" : pct >= 60 ? "brand" : pct >= 30 ? "amber" : "red";
+}
+
+/**
+ * Renderiza a célula de observações: trunca em uma linha com ellipsis e
+ * mostra o conteúdo completo via tooltip (`title`). Reaproveitado nas tabelas
+ * de lideranças e de apoiadores.
+ */
+function ObservacoesCell({ texto }: { texto: string | null }) {
+  if (!texto || texto.trim().length === 0) {
+    return <span className="text-2xs text-ink-400">—</span>;
+  }
+  return (
+    <span
+      title={texto}
+      className="block max-w-[260px] truncate text-xs text-ink-700"
+    >
+      {texto}
+    </span>
+  );
 }
 
 function SetoresBadges({
@@ -355,6 +376,14 @@ function LiderancasCards({
                 </div>
                 <ProgressBar value={pct} tone={tone} />
               </div>
+              {l.observacoes && l.observacoes.trim().length > 0 && (
+                <p
+                  title={l.observacoes}
+                  className="line-clamp-2 rounded-md border border-ink-100 bg-ink-50/60 px-2 py-1.5 text-2xs italic text-ink-600"
+                >
+                  {l.observacoes}
+                </p>
+              )}
               <Link
                 href={`/liderancas/${l.id}`}
                 className="mt-auto inline-flex items-center justify-end gap-1 pt-1 text-xs font-medium text-brand-700 hover:underline"
@@ -390,6 +419,7 @@ function LiderancasTable({
             <TableHead className="text-right">Meta</TableHead>
             <TableHead className="w-[180px]">Progresso</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead>Observações</TableHead>
             <TableHead className="w-[1%] text-right">Ações</TableHead>
           </TableRow>
         </TableHeader>
@@ -450,6 +480,9 @@ function LiderancasTable({
                   ) : (
                     <Badge variant="secondary">Inativa</Badge>
                   )}
+                </TableCell>
+                <TableCell>
+                  <ObservacoesCell texto={l.observacoes} />
                 </TableCell>
                 <TableCell className="text-right">
                   <Button asChild variant="outline" size="sm" aria-label={`Editar ${l.nome}`}>
@@ -513,13 +546,14 @@ function ViewToggleLink({
 }) {
   const active = view === current;
   // Preserva os filtros vigentes na URL ao alternar entre cards/tabela.
+  // "tabela" é o padrão — só emitimos `view=` quando for "cards".
   const qs = new URLSearchParams();
   if (searchParams.q) qs.set("q", searchParams.q);
   if (searchParams.cargo) qs.set("cargo", searchParams.cargo);
   if (searchParams.municipio) qs.set("municipio", searchParams.municipio);
   if (searchParams.setor) qs.set("setor", searchParams.setor);
   if (searchParams.status) qs.set("status", searchParams.status);
-  if (view === "tabela") qs.set("view", "tabela");
+  if (view === "cards") qs.set("view", "cards");
   const params = qs.toString();
   const href = params ? `/liderancas?${params}` : "/liderancas";
   return (

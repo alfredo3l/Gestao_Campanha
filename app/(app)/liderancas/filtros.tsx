@@ -61,7 +61,9 @@ export function LiderancasFiltros({
 
   function buildHref(next: URLSearchParams): string {
     next.delete("page");
-    if (view) next.set("view", view);
+    // "tabela" é o padrão — só propagamos `view` quando for "cards".
+    if (view === "cards") next.set("view", "cards");
+    else next.delete("view");
     const qs = next.toString();
     return qs ? `/liderancas?${qs}` : "/liderancas";
   }
@@ -88,7 +90,7 @@ export function LiderancasFiltros({
   function clear() {
     setQ("");
     const next = new URLSearchParams();
-    if (view) next.set("view", view);
+    if (view === "cards") next.set("view", "cards");
     const qs = next.toString();
     startTransition(() => router.push(qs ? `/liderancas?${qs}` : "/liderancas"));
   }

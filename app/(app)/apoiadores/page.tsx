@@ -64,7 +64,7 @@ export default async function ApoiadoresPage({ searchParams }: { searchParams: S
   let query = supabase
     .from("apoiadores")
     .select(
-      "id, nome, cpf, tel, foto_path, municipio, bairro, setor_id, status, created_at, lider:liderancas(id, nome, foto_path)",
+      "id, nome, cpf, tel, foto_path, municipio, bairro, setor_id, status, observacoes, created_at, lider:liderancas(id, nome, foto_path)",
       { count: "exact" }
     )
     .order("created_at", { ascending: false })
@@ -183,6 +183,7 @@ export default async function ApoiadoresPage({ searchParams }: { searchParams: S
                 <TableHead>Liderança</TableHead>
                 <TableHead>Telefone</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Observações</TableHead>
                 <TableHead className="text-right">Cadastrado</TableHead>
                 <TableHead className="w-[1%] text-right">Ações</TableHead>
               </TableRow>
@@ -239,6 +240,18 @@ export default async function ApoiadoresPage({ searchParams }: { searchParams: S
                     </TableCell>
                     <TableCell>
                       <StatusApoioBadge status={a.status} />
+                    </TableCell>
+                    <TableCell>
+                      {a.observacoes && a.observacoes.trim().length > 0 ? (
+                        <span
+                          title={a.observacoes}
+                          className="block max-w-[260px] truncate text-xs text-ink-700"
+                        >
+                          {a.observacoes}
+                        </span>
+                      ) : (
+                        <span className="text-2xs text-ink-400">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right font-mono-tab text-xs text-ink-500">
                       {fmtData(a.created_at)}

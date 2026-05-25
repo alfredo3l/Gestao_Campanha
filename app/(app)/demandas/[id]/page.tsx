@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, User, Megaphone, UserPlus, Phone, MapPin } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { getBairrosComSetor } from "@/lib/localidades/get-localidades";
 import { PageHeader } from "@/components/app/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { DemandaForm } from "../demanda-form";
 import { ComentarioForm } from "./comentario-form";
 import { ExcluirDemandaButton } from "./excluir-button";
@@ -13,7 +14,7 @@ import { StatusDemandaBadge, PrioridadeBadge } from "@/components/app/status-bad
 import { TrilhaAuditoria } from "@/components/app/trilha-auditoria";
 import { AvatarInitials } from "@/components/app/avatar-initials";
 import { resolverUsuariosAuditoria } from "@/lib/auditoria";
-import { fmtData, fmtDataHora } from "@/lib/utils/formatters";
+import { fmtData, fmtDataHora, fmtTelefone } from "@/lib/utils/formatters";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default async function DemandaDetalhePage({ params }: { params: { id: string } }) {
@@ -40,6 +41,25 @@ export default async function DemandaDetalhePage({ params }: { params: { id: str
     d.updated_by,
     ...movs.map((m) => m.autor_id),
   ]);
+
+  // Resolve o nome+contexto do solicitante para exibição.
+  let solicitanteApoiador: { id: string; nome: string } | null = null;
+  let solicitanteLider: { id: string; nome: string } | null = null;
+  if (d.solicitante_tipo === "apoiador" && d.solicitante_id) {
+    const res = await supabase
+      .from("apoiadores")
+      .select("id, nome")
+      .eq("id", d.solicitante_id)
+      .maybeSingle();
+    solicitanteApoiador = res.data ?? null;
+  } else if (d.solicitante_tipo === "lideranca" && d.solicitante_lider_id) {
+    const res = await supabase
+      .from("liderancas")
+      .select("id, nome")
+      .eq("id", d.solicitante_lider_id)
+      .maybeSingle();
+    solicitanteLider = res.data ?? null;
+  }
 
   return (
     <div className="space-y-6">
@@ -81,6 +101,16 @@ export default async function DemandaDetalhePage({ params }: { params: { id: str
             <CardTitle className="text-base">Resumo</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
+            <SolicitanteResumo
+              tipo={d.solicitante_tipo}
+              apoiador={solicitanteApoiador}
+              lider={solicitanteLider}
+              nome={d.solicitante_nome}
+              tel={d.solicitante_tel}
+              bairro={d.solicitante_bairro}
+              demandaId={d.id}
+              titulo={d.titulo}
+            />
             <Field label="Prazo">{d.prazo ? fmtData(d.prazo) : "—"}</Field>
             {d.resolvida_em && <Field label="Resolvida em">{fmtDataHora(d.resolvida_em)}</Field>}
             <TrilhaAuditoria
@@ -165,7 +195,14 @@ export default async function DemandaDetalhePage({ params }: { params: { id: str
                   categoria: d.categoria,
                   prioridade: d.prioridade,
                   status: d.status,
-                  solicitante_id: d.solicitante_id,
+                  solicitante: {
+                    tipo: d.solicitante_tipo,
+                    apoiador_id: d.solicitante_id,
+                    lider_id: d.solicitante_lider_id,
+                    nome: d.solicitante_nome,
+                    tel: d.solicitante_tel,
+                    bairro: d.solicitante_bairro,
+                  },
                   lider_id: d.lider_id,
                   bairro: d.bairro,
                   bairro_id: d.bairro_id,
@@ -195,6 +232,104 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     <div className="space-y-0.5">
       <p className="text-2xs font-semibold uppercase tracking-wide text-ink-500">{label}</p>
       <p className="text-ink-900">{children}</p>
+    </div>
+  );
+}
+
+function SolicitanteResumo({
+  tipo,
+  apoiador,
+  lider,
+  nome,
+  tel,
+  bairro,
+  demandaId,
+  titulo,
+}: {
+  tipo: "apoiador" | "lideranca" | "avulso";
+  apoiador: { id: string; nome: string } | null;
+  lider: { id: string; nome: string } | null;
+  nome: string | null;
+  tel: string | null;
+  bairro: string | null;
+  demandaId: string;
+  titulo: string;
+}) {
+  return (
+    <div className="space-y-1.5 rounded-md border border-ink-100 bg-ink-50/50 p-2.5">
+      <p className="text-2xs font-semibold uppercase tracking-wide text-ink-500">
+        Solicitante
+      </p>
+      {tipo === "apoiador" && apoiador && (
+        <Link
+          href={`/apoiadores/${apoiador.id}`}
+          className="flex items-center gap-1.5 text-sm font-medium text-brand-700 hover:underline"
+        >
+          <User className="h-3.5 w-3.5" />
+          {apoiador.nome}
+          <span className="ml-1 rounded bg-brand-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-800">
+            Apoiador
+          </span>
+        </Link>
+      )}
+      {tipo === "lideranca" && lider && (
+        <Link
+          href={`/liderancas/${lider.id}`}
+          className="flex items-center gap-1.5 text-sm font-medium text-brand-700 hover:underline"
+        >
+          <Megaphone className="h-3.5 w-3.5" />
+          {lider.nome}
+          <span className="ml-1 rounded bg-brand-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-800">
+            Liderança
+          </span>
+        </Link>
+      )}
+      {tipo === "avulso" && (
+        <>
+          <p className="flex items-center gap-1.5 text-sm font-medium text-ink-900">
+            <UserPlus className="h-3.5 w-3.5 text-ink-500" />
+            {nome ?? "—"}
+            <span className="ml-1 rounded bg-ink-200 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-700">
+              Avulso
+            </span>
+          </p>
+          {(tel || bairro) && (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-ink-600">
+              {tel && (
+                <span className="inline-flex items-center gap-1">
+                  <Phone className="h-3 w-3 text-ink-400" />
+                  {fmtTelefone(tel)}
+                </span>
+              )}
+              {bairro && (
+                <span className="inline-flex items-center gap-1">
+                  <MapPin className="h-3 w-3 text-ink-400" />
+                  {bairro}
+                </span>
+              )}
+            </div>
+          )}
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="mt-1.5 w-full"
+            aria-label="Cadastrar este solicitante como apoiador"
+          >
+            <Link
+              href={`/apoiadores/novo?${new URLSearchParams({
+                nome: nome ?? "",
+                tel: tel ?? "",
+                bairro: bairro ?? "",
+                demanda_origem: demandaId,
+                demanda_titulo: titulo,
+              }).toString()}`}
+            >
+              <UserPlus className="h-3.5 w-3.5" /> Cadastrar como apoiador
+            </Link>
+          </Button>
+        </>
+      )}
     </div>
   );
 }

@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
@@ -63,6 +64,7 @@ interface Props {
     email: string | null;
     meta_votos: number;
     ativa: boolean;
+    observacoes?: string | null;
     foto_path?: string | null;
   };
 }
@@ -252,6 +254,21 @@ export function LiderancaForm({ modo, id, cargos, bairros, setores, inicial }: P
           <Label htmlFor="ativa" className="cursor-pointer">
             Liderança ativa
           </Label>
+        </div>
+        <div className="md:col-span-2 space-y-1.5">
+          <Label htmlFor="observacoes">Observações</Label>
+          <Textarea
+            id="observacoes"
+            name="observacoes"
+            defaultValue={inicial?.observacoes ?? ""}
+            maxLength={2000}
+            rows={4}
+            placeholder="Anotações livres sobre esta liderança (perfil, histórico, compromissos, particularidades…)"
+          />
+          <p className="text-2xs text-ink-500">
+            Texto livre — até 2000 caracteres. Não inclua dados sensíveis sem
+            necessidade.
+          </p>
         </div>
       </div>
 

@@ -85,6 +85,7 @@ export async function criarLideranca(_: ActionState, formData: FormData): Promis
     email: formData.get("email") || "",
     meta_votos: formData.get("meta_votos") || 0,
     ativa: formData.get("ativa") === "on" || formData.get("ativa") === "true",
+    observacoes: formData.get("observacoes") || "",
     foto_path: formData.get("foto_path") || "",
   });
   if (!parsed.success) {
@@ -110,6 +111,7 @@ export async function criarLideranca(_: ActionState, formData: FormData): Promis
       email: payload.email || null,
       meta_votos: payload.meta_votos,
       ativa: payload.ativa,
+      observacoes: payload.observacoes,
       foto_path: payload.foto_path,
       created_by: user.id,
     })
@@ -144,6 +146,7 @@ export async function atualizarLideranca(
     email: formData.get("email") || "",
     meta_votos: formData.get("meta_votos") || 0,
     ativa: formData.get("ativa") === "on" || formData.get("ativa") === "true",
+    observacoes: formData.get("observacoes") || "",
     foto_path: formData.get("foto_path") || "",
   });
   if (!parsed.success) {
@@ -166,6 +169,7 @@ export async function atualizarLideranca(
       email: p.email || null,
       meta_votos: p.meta_votos,
       ativa: p.ativa,
+      observacoes: p.observacoes,
       foto_path: p.foto_path,
     })
     .eq("id", id);
