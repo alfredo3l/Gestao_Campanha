@@ -29,8 +29,8 @@ const mono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Gestão de Campanha",
-    template: "%s · Gestão de Campanha",
+    default: "Plataforma de Gestão de Campanha",
+    template: "%s · Plataforma de Gestão de Campanha",
   },
   description: "Sistema interno de gestão de campanha eleitoral — Deputado Estadual MS",
   robots: { index: false, follow: false },

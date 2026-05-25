@@ -29,7 +29,7 @@ export function Sidebar() {
   return (
     <aside className="hidden bg-brand-900 text-white md:row-span-2 md:flex md:flex-col">
       <div className="border-b border-white/10 px-5 py-4">
-        <p className="font-mono-tab text-2xs uppercase tracking-widest text-white/60">Campanha</p>
+        <p className="font-mono-tab text-2xs uppercase tracking-widest text-white/60">Plataforma de Gestão de Campanha</p>
         <p className="mt-0.5 font-display text-base font-semibold">MS · Dep. Estadual</p>
       </div>
       <nav className="flex-1 space-y-0.5 px-2 py-3 text-sm">

@@ -68,19 +68,16 @@ export default async function ApoiadoresPage({ searchParams }: { searchParams: S
     }
   }
 
-  const [{ data: apoiadores, count, error }, lideRes, kpiRes] = await Promise.all([
+  const [{ data: apoiadores, count, error }, lideRes, kpiRes, municipiosRes] = await Promise.all([
     query,
     supabase.from("liderancas").select("id, nome").eq("ativa", true).order("nome"),
     supabase.from("v_dashboard_kpis").select("apoiadores_total, apoiadores_semana").maybeSingle(),
+    supabase.from("v_apoiadores_municipios").select("municipio"),
   ]);
 
-  const { data: municipiosRows } = await supabase
-    .from("apoiadores")
-    .select("municipio")
-    .order("municipio");
-  const municipios = Array.from(
-    new Set((municipiosRows ?? []).map((r) => r.municipio).filter(Boolean))
-  ) as string[];
+  const municipios = (municipiosRes.data ?? [])
+    .map((r) => r.municipio)
+    .filter((m): m is string => Boolean(m));
 
   const total = count ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));

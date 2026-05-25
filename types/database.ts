@@ -332,6 +332,12 @@ export type Database = {
         };
         Relationships: [];
       };
+      v_apoiadores_municipios: {
+        Row: {
+          municipio: string | null;
+        };
+        Relationships: [];
+      };
     };
     Functions: {
       current_role: { Args: never; Returns: Database["campanha"]["Enums"]["role_usuario"] | null };
