@@ -44,9 +44,23 @@ export async function updateSession(request: NextRequest) {
 
   let response = NextResponse.next({ request });
 
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  // Defesa contra MIDDLEWARE_INVOCATION_FAILED: se as variáveis Supabase não
+  // estiverem configuradas (ex.: deploy sem env vars na Vercel), libera o
+  // request em vez de derrubar o site inteiro com erro 500. A autenticação
+  // ainda será exigida pelo layout autenticado / RLS no banco.
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error(
+      "[middleware] NEXT_PUBLIC_SUPABASE_URL ou NEXT_PUBLIC_SUPABASE_ANON_KEY ausentes — configure no painel da Vercel."
+    );
+    return response;
+  }
+
   const supabase = createServerClient<Database, "campanha">(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       db: { schema: "campanha" },
       cookies: {
@@ -66,11 +80,20 @@ export async function updateSession(request: NextRequest) {
 
   // `getSession()` lê apenas o cookie e renova o JWT quando expirado.
   // Não faz roundtrip ao Supabase Auth a cada request — diferença grande vs `getUser()`.
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-  if (!session) {
+    if (!session) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      url.searchParams.set("next", pathname);
+      return NextResponse.redirect(url);
+    }
+  } catch (error) {
+    // Falha de rede / cookie corrompido não deve gerar 500 no site inteiro.
+    console.error("[middleware] Erro ao validar sessão Supabase:", error);
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", pathname);
