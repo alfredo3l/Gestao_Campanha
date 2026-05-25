@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* shadcn/ui semantic tokens — institucional, baseado em brand-900 e ink */
+    --background: 220 30% 97%;
+    --foreground: 218 38% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 218 38% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 218 38% 10%;
+
+    --primary: 211 73% 21%;          /* brand-800 #0f3a5f */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 22% 94%;         /* ink-100 */
+    --secondary-foreground: 217 36% 17%;
+
+    --muted: 220 25% 96%;
+    --muted-foreground: 218 16% 47%;  /* ~ink-500 */
+
+    --accent: 213 60% 95%;            /* brand-100 */
+    --accent-foreground: 211 73% 21%;
+
+    --destructive: 3 71% 41%;         /* status-red */
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 20% 90%;            /* ~ink-200 */
+    --input: 220 20% 90%;
+    --ring: 211 73% 21%;
+
+    --radius: 6px;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html, body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "ss01";
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    font-family: var(--font-sans), "Public Sans", system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+}
+
+@layer utilities {
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  .font-display {
+    font-family: var(--font-serif), "Source Serif 4", Georgia, serif;
+  }
+  .font-mono-tab {
+    font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+}
