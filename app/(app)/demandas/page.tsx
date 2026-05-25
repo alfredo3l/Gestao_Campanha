@@ -29,6 +29,7 @@ import {
   StatusDemandaBadge,
 } from "@/components/app/status-badge";
 import { DemandaCard } from "./demanda-card";
+import { DemandasFiltros } from "./filtros";
 import { fmtNumero, fmtData } from "@/lib/utils/formatters";
 import { cn } from "@/lib/utils/cn";
 import type {
@@ -43,10 +44,26 @@ type ViewMode = "kanban" | "tabela";
 
 interface Search {
   view?: string;
+  q?: string;
+  status?: string;
+  prioridade?: string;
+  categoria?: string;
+  lider?: string;
+  solicitante_tipo?: string;
 }
 
+/** Tabela é o padrão; "kanban" só quando explicitamente requisitado. */
 function parseView(raw: string | undefined): ViewMode {
-  return raw === "tabela" ? "tabela" : "kanban";
+  return raw === "kanban" ? "kanban" : "tabela";
+}
+
+/** Lê parâmetro multi-valor (CSV) — suporta filtros do tipo "in (...)". */
+function parseMulti(raw: string | undefined): string[] {
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0 && s !== "todos");
 }
 
 const colunas: { status: StatusDemanda; titulo: string; descricao: string; tone: string }[] = [
@@ -79,10 +96,19 @@ export default async function DemandasPage({
   const supabase = createClient();
   const view = parseView(searchParams.view);
 
+  const statusSel = parseMulti(searchParams.status) as StatusDemanda[];
+  const prioridadeSel = parseMulti(searchParams.prioridade) as Prioridade[];
+  const categoriaSel = parseMulti(searchParams.categoria);
+  const liderSel = parseMulti(searchParams.lider);
+  const solicitanteSel = parseMulti(
+    searchParams.solicitante_tipo
+  ) as TipoSolicitante[];
+  const termo = searchParams.q?.trim() ?? "";
+
   const sessenta = new Date();
   sessenta.setDate(sessenta.getDate() - 60);
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("demandas")
     .select(
       `id, codigo, titulo, categoria, prioridade, status, prazo, created_at,
@@ -91,9 +117,47 @@ export default async function DemandasPage({
        solicitante_apoiador:apoiadores!demandas_solicitante_id_fkey(nome),
        solicitante_lider:liderancas!demandas_solicitante_lider_id_fkey(nome)`
     )
-    .or(`status.neq.resolvida,resolvida_em.gte.${sessenta.toISOString()}`)
     .order("prioridade", { ascending: false })
     .order("created_at", { ascending: false });
+
+  // Quando o usuário não filtra status explicitamente, escondemos as
+  // resolvidas com mais de 60 dias (mesma regra anterior) — mantém o foco
+  // no que está em aberto sem perder o histórico recente.
+  if (statusSel.length === 0) {
+    query = query.or(
+      `status.neq.resolvida,resolvida_em.gte.${sessenta.toISOString()}`
+    );
+  } else {
+    query = query.in("status", statusSel);
+  }
+
+  if (prioridadeSel.length > 0) query = query.in("prioridade", prioridadeSel);
+  if (categoriaSel.length > 0) query = query.in("categoria", categoriaSel);
+  if (liderSel.length > 0) query = query.in("lider_id", liderSel);
+  if (solicitanteSel.length > 0)
+    query = query.in("solicitante_tipo", solicitanteSel);
+
+  if (termo) {
+    // Busca tolerante por título e código. `replace` evita conflito com a
+    // sintaxe `,` do operador `.or()`.
+    const safe = termo.replace(/[%,]/g, " ");
+    query = query.or(`titulo.ilike.%${safe}%,codigo.ilike.%${safe}%`);
+  }
+
+  // Listas auxiliares para os comboboxes de filtro: categorias distintas
+  // que aparecem em alguma demanda + lideranças ativas.
+  const [{ data, error }, lideRes, catRes] = await Promise.all([
+    query,
+    supabase
+      .from("liderancas")
+      .select("id, nome")
+      .eq("ativa", true)
+      .order("nome"),
+    supabase
+      .from("demandas")
+      .select("categoria")
+      .order("categoria", { ascending: true }),
+  ]);
 
   if (error) {
     return (
@@ -105,6 +169,19 @@ export default async function DemandasPage({
       </div>
     );
   }
+
+  const liderancas = lideRes.data ?? [];
+  const categorias = Array.from(
+    new Set((catRes.data ?? []).map((r) => r.categoria).filter(Boolean))
+  ).sort((a, b) => a.localeCompare(b, "pt-BR"));
+
+  const hasFilters =
+    statusSel.length > 0 ||
+    prioridadeSel.length > 0 ||
+    categoriaSel.length > 0 ||
+    liderSel.length > 0 ||
+    solicitanteSel.length > 0 ||
+    Boolean(termo);
 
   const items: DemandaItem[] = (data ?? []).map((d) => {
     const lid = Array.isArray(d.lider) ? d.lider[0] : d.lider;
@@ -138,7 +215,12 @@ export default async function DemandasPage({
       solicitanteNome: solNome,
     };
   });
+
+  // No Kanban (3 colunas), só fazem sentido as ativas (sem canceladas).
+  // Na Tabela respeitamos o filtro do usuário — se filtrou `cancelada`,
+  // mostramos canceladas; senão, idem ao Kanban.
   const ativas = items.filter((d) => d.status !== "cancelada");
+  const itensTabela = statusSel.includes("cancelada") ? items : ativas;
 
   const grupos: Record<StatusDemanda, DemandaItem[]> = {
     aberta: [],
@@ -147,6 +229,8 @@ export default async function DemandasPage({
     cancelada: [],
   };
   for (const d of ativas) grupos[d.status].push(d);
+
+  const total = itensTabela.length;
 
   return (
     <div className="space-y-6">
@@ -163,36 +247,67 @@ export default async function DemandasPage({
       />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="Abertas" value={fmtNumero(grupos.aberta.length)} tone="amber" />
-        <Stat label="Em andamento" value={fmtNumero(grupos.andamento.length)} tone="blue" />
-        <Stat label="Resolvidas (60d)" value={fmtNumero(grupos.resolvida.length)} tone="green" />
-        <Stat label="Total ativas" value={fmtNumero(ativas.length)} />
+        <Stat
+          label={hasFilters ? "Abertas (filtro)" : "Abertas"}
+          value={fmtNumero(grupos.aberta.length)}
+          tone="amber"
+        />
+        <Stat
+          label={hasFilters ? "Em andamento (filtro)" : "Em andamento"}
+          value={fmtNumero(grupos.andamento.length)}
+          tone="blue"
+        />
+        <Stat
+          label={hasFilters ? "Resolvidas (filtro)" : "Resolvidas (60d)"}
+          value={fmtNumero(grupos.resolvida.length)}
+          tone="green"
+        />
+        <Stat
+          label={hasFilters ? "Resultado da busca" : "Total ativas"}
+          value={fmtNumero(total)}
+        />
       </div>
 
-      {ativas.length === 0 ? (
+      <DemandasFiltros
+        categorias={categorias}
+        liderancas={liderancas}
+        view={searchParams.view}
+      />
+
+      {total === 0 ? (
         <EmptyState
           icon={<Inbox className="h-5 w-5" />}
-          title="Nenhuma demanda registrada"
-          description="Cadastre as solicitações dos eleitores para acompanhá-las nesta caixa de entrada."
+          title={
+            hasFilters
+              ? "Nenhum resultado para o filtro atual"
+              : "Nenhuma demanda registrada"
+          }
+          description={
+            hasFilters
+              ? "Tente outro termo de busca ou limpe os filtros."
+              : "Cadastre as solicitações dos eleitores para acompanhá-las nesta caixa de entrada."
+          }
           action={
-            <Button asChild>
-              <Link href="/demandas/nova">
-                <Plus className="h-4 w-4" /> Nova demanda
-              </Link>
-            </Button>
+            !hasFilters && (
+              <Button asChild>
+                <Link href="/demandas/nova">
+                  <Plus className="h-4 w-4" /> Nova demanda
+                </Link>
+              </Button>
+            )
           }
         />
       ) : (
         <>
           <div className="flex items-center justify-between">
             <p className="text-xs text-ink-500">
-              {fmtNumero(ativas.length)} {ativas.length === 1 ? "demanda" : "demandas"}
+              {fmtNumero(total)} {total === 1 ? "demanda" : "demandas"}
             </p>
-            <ViewToggle current={view} />
+            <ViewToggle current={view} searchParams={searchParams} />
           </div>
 
           {view === "tabela" ? (
-            <DemandasTabela items={ativas} />
+            <DemandasTabela items={itensTabela} />
           ) : (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               {colunas.map((col) => (
@@ -345,7 +460,13 @@ function DemandasTabela({ items }: { items: DemandaItem[] }) {
   );
 }
 
-function ViewToggle({ current }: { current: ViewMode }) {
+function ViewToggle({
+  current,
+  searchParams,
+}: {
+  current: ViewMode;
+  searchParams: Search;
+}) {
   return (
     <div
       role="group"
@@ -353,16 +474,18 @@ function ViewToggle({ current }: { current: ViewMode }) {
       className="inline-flex items-center rounded-md border border-ink-200 bg-white p-0.5"
     >
       <ViewToggleLink
-        view="kanban"
-        current={current}
-        label="Quadro"
-        icon={<LayoutGrid className="h-3.5 w-3.5" />}
-      />
-      <ViewToggleLink
         view="tabela"
         current={current}
         label="Tabela"
         icon={<Rows3 className="h-3.5 w-3.5" />}
+        searchParams={searchParams}
+      />
+      <ViewToggleLink
+        view="kanban"
+        current={current}
+        label="Quadro"
+        icon={<LayoutGrid className="h-3.5 w-3.5" />}
+        searchParams={searchParams}
       />
     </div>
   );
@@ -373,15 +496,28 @@ function ViewToggleLink({
   current,
   label,
   icon,
+  searchParams,
 }: {
   view: ViewMode;
   current: ViewMode;
   label: string;
   icon: React.ReactNode;
+  searchParams: Search;
 }) {
   const active = view === current;
-  // "kanban" é o padrão — só emitimos `view=` quando for "tabela".
-  const href = view === "tabela" ? "/demandas?view=tabela" : "/demandas";
+  // Preserva os filtros vigentes na URL ao alternar entre tabela/kanban.
+  // "tabela" é o padrão — só emitimos `view=` quando for "kanban".
+  const qs = new URLSearchParams();
+  if (searchParams.q) qs.set("q", searchParams.q);
+  if (searchParams.status) qs.set("status", searchParams.status);
+  if (searchParams.prioridade) qs.set("prioridade", searchParams.prioridade);
+  if (searchParams.categoria) qs.set("categoria", searchParams.categoria);
+  if (searchParams.lider) qs.set("lider", searchParams.lider);
+  if (searchParams.solicitante_tipo)
+    qs.set("solicitante_tipo", searchParams.solicitante_tipo);
+  if (view === "kanban") qs.set("view", "kanban");
+  const params = qs.toString();
+  const href = params ? `/demandas?${params}` : "/demandas";
   return (
     <Link
       href={href}
