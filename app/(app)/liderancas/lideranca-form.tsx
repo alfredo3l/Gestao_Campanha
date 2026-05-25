@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { MunicipioCombobox } from "@/components/ui/municipio-combobox";
 import {
   criarLideranca,
   atualizarLideranca,
@@ -104,12 +105,12 @@ export function LiderancaForm({ modo, id, inicial }: Props) {
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="municipio">Município *</Label>
-          <Input
+          <MunicipioCombobox
             id="municipio"
             name="municipio"
             required
             defaultValue={inicial?.municipio}
-            maxLength={80}
+            semPadrao={modo === "editar"}
           />
         </div>
         <div className="space-y-1.5">

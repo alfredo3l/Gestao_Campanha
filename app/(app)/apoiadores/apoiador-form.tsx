@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { MunicipioCombobox } from "@/components/ui/municipio-combobox";
 import { criarApoiador, atualizarApoiador, type ActionState } from "./actions";
 import type { StatusApoio } from "@/lib/validations/apoiador";
 import { formatarCpf } from "@/lib/utils/cpf";
@@ -168,7 +169,12 @@ export function ApoiadorForm({ modo, id, liderancas, inicial }: Props) {
           <Input name="bairro" defaultValue={inicial?.bairro ?? ""} maxLength={80} />
         </Field>
         <Field label="Município *">
-          <Input name="municipio" required defaultValue={inicial?.municipio} maxLength={80} />
+          <MunicipioCombobox
+            name="municipio"
+            required
+            defaultValue={inicial?.municipio}
+            semPadrao={modo === "editar"}
+          />
         </Field>
         <Field label="CEP">
           <Input
