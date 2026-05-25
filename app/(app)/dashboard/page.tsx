@@ -25,7 +25,7 @@ export default async function DashboardPage() {
     supabase.from("v_dashboard_kpis").select("*").maybeSingle(),
     supabase
       .from("v_progresso_lideranca")
-      .select("id, nome, cargo, municipio, apoiadores_total, votos_projetados, meta_votos, pct_meta")
+      .select("id, nome, cargo, municipio, foto_path, apoiadores_total, votos_projetados, meta_votos, pct_meta")
       .order("apoiadores_total", { ascending: false })
       .limit(5),
     supabase
@@ -37,7 +37,7 @@ export default async function DashboardPage() {
       .limit(5),
     supabase
       .from("apoiadores")
-      .select("id, nome, municipio, status, created_at, lider:liderancas(nome)")
+      .select("id, nome, foto_path, municipio, status, created_at, lider:liderancas(nome)")
       .order("created_at", { ascending: false })
       .limit(6),
     supabase
@@ -170,7 +170,7 @@ export default async function DashboardPage() {
                   className="block rounded-md p-2 transition-colors hover:bg-ink-50"
                 >
                   <div className="flex items-center gap-2">
-                    <AvatarInitials nome={l.nome} className="h-8 w-8" />
+                    <AvatarInitials nome={l.nome} fotoPath={l.foto_path} className="h-8 w-8" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-ink-900">{l.nome}</p>
                       <p className="text-2xs text-ink-500">{l.municipio}</p>
@@ -257,7 +257,7 @@ export default async function DashboardPage() {
                   key={a.id}
                   className="flex items-center gap-2 rounded-md border border-ink-200 bg-white p-2.5"
                 >
-                  <AvatarInitials nome={a.nome} className="h-8 w-8" />
+                  <AvatarInitials nome={a.nome} fotoPath={a.foto_path} className="h-8 w-8" />
                   <div className="min-w-0 flex-1">
                     <Link
                       href={`/apoiadores/${a.id}`}

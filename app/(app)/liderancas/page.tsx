@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Plus, MapPin, Mail, Phone, ArrowRight } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
+import { getCargosLiderMap } from "@/lib/cargos/get-cargos";
 import { PageHeader } from "@/components/app/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -16,10 +17,13 @@ export const metadata = { title: "Lideranças" };
 
 export default async function LiderancasPage() {
   const supabase = createClient();
-  const { data: liderancas, error } = await supabase
-    .from("v_progresso_lideranca")
-    .select("*")
-    .order("apoiadores_total", { ascending: false });
+  const [{ data: liderancas, error }, cargosMap] = await Promise.all([
+    supabase
+      .from("v_progresso_lideranca")
+      .select("*")
+      .order("apoiadores_total", { ascending: false }),
+    getCargosLiderMap(),
+  ]);
 
   if (error) {
     return (
@@ -79,7 +83,11 @@ export default async function LiderancasPage() {
             return (
               <Card key={l.id} className="flex flex-col">
                 <CardHeader className="flex-row items-start gap-3 space-y-0 pb-2">
-                  <AvatarInitials nome={l.nome} className="h-10 w-10 mt-0.5" />
+                  <AvatarInitials
+                    nome={l.nome}
+                    fotoPath={l.foto_path}
+                    className="h-10 w-10 mt-0.5"
+                  />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
                       <Link
@@ -91,7 +99,7 @@ export default async function LiderancasPage() {
                       {!l.ativa && <Badge variant="secondary">Inativa</Badge>}
                     </div>
                     <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                      <CargoBadge cargo={l.cargo} />
+                      <CargoBadge cargo={l.cargo} label={cargosMap[l.cargo]} />
                       <span className="flex items-center gap-1 text-xs text-ink-500">
                         <MapPin className="h-3 w-3" /> {l.municipio}
                         {l.bairro ? ` · ${l.bairro}` : ""}

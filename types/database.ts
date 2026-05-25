@@ -33,21 +33,35 @@ export type Database = {
           nome: string;
           role: Database["campanha"]["Enums"]["role_usuario"];
           ativo: boolean;
+          /** Caminho no bucket `campanha-fotos` (migration 0010). */
+          foto_path: string | null;
           created_at: string;
+          /** Auditoria — migration 0011. */
+          updated_at: string;
+          created_by: string | null;
+          updated_by: string | null;
         };
         Insert: {
           id: string;
           nome: string;
           role?: Database["campanha"]["Enums"]["role_usuario"];
           ativo?: boolean;
+          foto_path?: string | null;
           created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+          updated_by?: string | null;
         };
         Update: {
           id?: string;
           nome?: string;
           role?: Database["campanha"]["Enums"]["role_usuario"];
           ativo?: boolean;
+          foto_path?: string | null;
           created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+          updated_by?: string | null;
         };
         Relationships: [];
       };
@@ -55,7 +69,8 @@ export type Database = {
         Row: {
           id: string;
           nome: string;
-          cargo: Database["campanha"]["Enums"]["cargo_lider"];
+          /** FK textual → campanha.cargos_lider(value). Migração 0010. */
+          cargo: string;
           municipio: string;
           bairro: string | null;
           tel: string | null;
@@ -63,14 +78,18 @@ export type Database = {
           meta_votos: number;
           ativa: boolean;
           profile_id: string | null;
+          /** Caminho no bucket `campanha-fotos` (migration 0010). */
+          foto_path: string | null;
           created_at: string;
           updated_at: string;
           created_by: string | null;
+          /** Último usuário a alterar (preenchido por trigger — migration 0011). */
+          updated_by: string | null;
         };
         Insert: {
           id?: string;
           nome: string;
-          cargo: Database["campanha"]["Enums"]["cargo_lider"];
+          cargo: string;
           municipio: string;
           bairro?: string | null;
           tel?: string | null;
@@ -78,11 +97,46 @@ export type Database = {
           meta_votos?: number;
           ativa?: boolean;
           profile_id?: string | null;
+          foto_path?: string | null;
           created_at?: string;
           updated_at?: string;
           created_by?: string | null;
+          updated_by?: string | null;
         };
         Update: Partial<Database["campanha"]["Tables"]["liderancas"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "liderancas_cargo_fkey";
+            columns: ["cargo"];
+            referencedRelation: "cargos_lider";
+            referencedColumns: ["value"];
+          }
+        ];
+      };
+      cargos_lider: {
+        Row: {
+          id: string;
+          value: string;
+          label: string;
+          ordem: number;
+          ativo: boolean;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+          updated_by: string | null;
+        };
+        Insert: {
+          id?: string;
+          value: string;
+          label: string;
+          ordem?: number;
+          ativo?: boolean;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+          updated_by?: string | null;
+        };
+        Update: Partial<Database["campanha"]["Tables"]["cargos_lider"]["Insert"]>;
         Relationships: [];
       };
       apoiadores: {
@@ -105,9 +159,13 @@ export type Database = {
           indicado_por: string | null;
           observacoes: string | null;
           data_consentimento: string | null;
+          /** Caminho no bucket `campanha-fotos` (migration 0010). */
+          foto_path: string | null;
           created_at: string;
           updated_at: string;
           created_by: string | null;
+          /** Último usuário a alterar (preenchido por trigger — migration 0011). */
+          updated_by: string | null;
         };
         Insert: {
           id?: string;
@@ -128,9 +186,11 @@ export type Database = {
           indicado_por?: string | null;
           observacoes?: string | null;
           data_consentimento?: string | null;
+          foto_path?: string | null;
           created_at?: string;
           updated_at?: string;
           created_by?: string | null;
+          updated_by?: string | null;
         };
         Update: Partial<Database["campanha"]["Tables"]["apoiadores"]["Insert"]>;
         Relationships: [
@@ -164,6 +224,10 @@ export type Database = {
           meta_votos: number;
           prazo: string | null;
           created_at: string;
+          /** Auditoria — migration 0011. */
+          updated_at: string;
+          created_by: string | null;
+          updated_by: string | null;
         };
         Insert: {
           id?: string;
@@ -173,6 +237,9 @@ export type Database = {
           meta_votos?: number;
           prazo?: string | null;
           created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+          updated_by?: string | null;
         };
         Update: Partial<Database["campanha"]["Tables"]["metas_regiao"]["Insert"]>;
         Relationships: [];
@@ -193,6 +260,8 @@ export type Database = {
           created_at: string;
           updated_at: string;
           created_by: string | null;
+          /** Último usuário a alterar (preenchido por trigger — migration 0011). */
+          updated_by: string | null;
         };
         Insert: {
           id?: string;
@@ -209,6 +278,7 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
           created_by?: string | null;
+          updated_by?: string | null;
         };
         Update: Partial<Database["campanha"]["Tables"]["demandas"]["Insert"]>;
         Relationships: [
@@ -292,12 +362,13 @@ export type Database = {
         Row: {
           id: string;
           nome: string;
-          cargo: Database["campanha"]["Enums"]["cargo_lider"];
+          cargo: string;
           municipio: string;
           bairro: string | null;
           meta_votos: number;
           ativa: boolean;
           profile_id: string | null;
+          foto_path: string | null;
           apoiadores_total: number;
           apoiadores_confirmados: number;
           votos_projetados: number;
@@ -351,12 +422,8 @@ export type Database = {
     Enums: {
       role_usuario: "admin" | "coordenador" | "operador" | "visualizador";
       status_apoio: "confirmado" | "provavel" | "indeciso" | "contato" | "nao_vota";
-      cargo_lider:
-        | "coord_regional"
-        | "coord_zona"
-        | "lider_bairro"
-        | "lider_comunitario"
-        | "lider_rural";
+      // O antigo enum `cargo_lider` foi removido na migração 0010 — agora os
+      // cargos vivem em `campanha.cargos_lider` (text + FK).
       status_demanda: "aberta" | "andamento" | "resolvida" | "cancelada";
       prioridade: "baixa" | "media" | "alta" | "urgente";
     };

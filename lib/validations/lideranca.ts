@@ -1,17 +1,27 @@
 import { z } from "zod";
 
-export const cargoLiderEnum = z.enum([
-  "coord_regional",
-  "coord_zona",
-  "lider_bairro",
-  "lider_comunitario",
-  "lider_rural",
-]);
-export type CargoLider = z.infer<typeof cargoLiderEnum>;
+/**
+ * O cargo de uma liderança era um enum Postgres (`cargo_lider`). A partir da
+ * migração 0010, é um slug texto referenciando `campanha.cargos_lider(value)`.
+ * Validamos o formato (snake_case) e o tamanho aqui; a integridade referencial
+ * é garantida pela FK no banco e checada pelo server action ao listar cargos
+ * disponíveis.
+ */
+export const cargoSlugSchema = z
+  .string()
+  .trim()
+  .min(2, "Cargo inválido")
+  .max(50, "Cargo inválido")
+  .regex(/^[a-z][a-z0-9_]{1,49}$/, "Cargo inválido");
+
+export type CargoSlug = z.infer<typeof cargoSlugSchema>;
+
+/** @deprecated Mantido apenas para retrocompatibilidade enquanto migramos referências. */
+export type CargoLider = CargoSlug;
 
 export const liderancaSchema = z.object({
   nome: z.string().trim().min(3, "Nome deve ter pelo menos 3 caracteres").max(120),
-  cargo: cargoLiderEnum,
+  cargo: cargoSlugSchema,
   municipio: z.string().trim().min(2).max(80),
   bairro: z.string().trim().max(80).optional().or(z.literal("")),
   tel: z.string().trim().max(20).optional().or(z.literal("")),
@@ -19,6 +29,29 @@ export const liderancaSchema = z.object({
   meta_votos: z.coerce.number().int().min(0, "Meta não pode ser negativa").max(1_000_000),
   ativa: z.boolean().default(true),
   profile_id: z.string().uuid().nullable().optional(),
+  /** Caminho relativo no bucket `campanha-fotos`. NULL/'' = sem foto. */
+  foto_path: z
+    .string()
+    .trim()
+    .max(300, "Caminho de foto muito longo")
+    .optional()
+    .or(z.literal(""))
+    .transform((v) => (v ? v : null))
+    .nullable(),
 });
 
 export type LiderancaInput = z.infer<typeof liderancaSchema>;
+
+/**
+ * Schema usado pela tela de gerenciamento de cargos (admin/coordenador).
+ *
+ * `value` é o slug imutável usado como FK; `label` é o nome exibido.
+ */
+export const cargoLiderRecordSchema = z.object({
+  value: cargoSlugSchema,
+  label: z.string().trim().min(2, "Nome muito curto").max(80, "Nome muito longo"),
+  ordem: z.coerce.number().int().min(0).max(9999).default(0),
+  ativo: z.boolean().default(true),
+});
+
+export type CargoLiderRecord = z.infer<typeof cargoLiderRecordSchema>;

@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { MunicipioCombobox } from "@/components/ui/municipio-combobox";
+import { FotoUpload } from "@/components/app/foto-upload";
 import { criarApoiador, atualizarApoiador, type ActionState } from "./actions";
 import type { StatusApoio } from "@/lib/validations/apoiador";
 import { formatarCpf } from "@/lib/utils/cpf";
@@ -48,6 +49,7 @@ interface Inicial {
   indicado_por: string | null;
   observacoes: string | null;
   tags: string[];
+  foto_path?: string | null;
 }
 
 interface Props {
@@ -87,6 +89,8 @@ export function ApoiadorForm({ modo, id, liderancas, inicial }: Props) {
   const [cpf, setCpf] = useState(inicial?.cpf ? formatarCpf(inicial.cpf) : "");
   const [tel, setTel] = useState(inicial?.tel ? fmtTelefone(inicial.tel) : "");
   const [cep, setCep] = useState(inicial?.cep ? fmtCep(inicial.cep) : "");
+  const [nome, setNome] = useState(inicial?.nome ?? "");
+  const [fotoPath, setFotoPath] = useState<string | null>(inicial?.foto_path ?? null);
 
   useEffect(() => {
     if (state.error) toast.error("Não foi possível salvar", { description: state.error });
@@ -107,10 +111,36 @@ export function ApoiadorForm({ modo, id, liderancas, inicial }: Props) {
   return (
     <form action={formAction} className="space-y-8">
       <input type="hidden" name="tags" value={tags.join(",")} />
+      <input type="hidden" name="foto_path" value={fotoPath ?? ""} />
+
+      {modo === "editar" && id ? (
+        <div className="flex flex-col gap-2 rounded-lg border border-ink-200 bg-ink-50/40 p-4">
+          <Label className="text-2xs font-semibold uppercase tracking-wide text-ink-500">
+            Foto do apoiador
+          </Label>
+          <FotoUpload
+            nome={nome}
+            scope="apoiadores"
+            ownerId={id}
+            value={fotoPath}
+            onChange={setFotoPath}
+          />
+        </div>
+      ) : (
+        <div className="rounded-lg border border-dashed border-ink-200 bg-ink-50/40 p-3 text-xs text-ink-500">
+          A foto do apoiador pode ser enviada após criar o cadastro, na tela de edição.
+        </div>
+      )}
 
       <Section title="Dados pessoais">
         <Field label="Nome completo *" colSpan={2}>
-          <Input name="nome" required defaultValue={inicial?.nome} maxLength={120} />
+          <Input
+            name="nome"
+            required
+            defaultValue={inicial?.nome}
+            maxLength={120}
+            onChange={(e) => setNome(e.target.value)}
+          />
         </Field>
         <Field label="CPF *">
           <Input

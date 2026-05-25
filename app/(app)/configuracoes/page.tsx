@@ -1,4 +1,5 @@
-import { ShieldCheck, Database, Users2, Tags } from "lucide-react";
+import Link from "next/link";
+import { ShieldCheck, Database, Users2, Tags, UserCog, UserCircle, ArrowRight } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/app/page-header";
@@ -12,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { AvatarInitials } from "@/components/app/avatar-initials";
 import { fmtData } from "@/lib/utils/formatters";
 
 export const metadata = { title: "Configurações" };
@@ -34,7 +36,7 @@ export default async function ConfiguracoesPage() {
   const supabase = createClient();
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id, nome, role, ativo, created_at")
+    .select("id, nome, role, ativo, foto_path, created_at")
     .order("created_at", { ascending: false });
 
   return (
@@ -73,8 +75,13 @@ export default async function ConfiguracoesPage() {
                   {profiles.map((p) => (
                     <TableRow key={p.id}>
                       <TableCell>
-                        <p className="font-medium text-ink-900">{p.nome}</p>
-                        <p className="font-mono-tab text-2xs text-ink-500">{p.id.slice(0, 8)}…</p>
+                        <div className="flex items-center gap-2.5">
+                          <AvatarInitials nome={p.nome} fotoPath={p.foto_path} />
+                          <div className="min-w-0">
+                            <p className="font-medium text-ink-900">{p.nome}</p>
+                            <p className="font-mono-tab text-2xs text-ink-500">{p.id.slice(0, 8)}…</p>
+                          </div>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge variant={roleVariants[p.role] ?? "secondary"}>
@@ -130,6 +137,47 @@ export default async function ConfiguracoesPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <Link
+          href="/configuracoes/perfil"
+          className="group rounded-lg border border-ink-200 bg-white p-4 transition-shadow hover:shadow-sm"
+        >
+          <div className="flex items-start gap-3">
+            <div className="rounded-md bg-brand-100 p-2 text-brand-800">
+              <UserCircle className="h-5 w-5" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-ink-900">Meu perfil</p>
+                <ArrowRight className="h-4 w-4 text-ink-400 transition-transform group-hover:translate-x-0.5 group-hover:text-brand-700" />
+              </div>
+              <p className="mt-0.5 text-xs text-ink-500">
+                Atualize sua foto de exibição e o nome usado no sistema.
+              </p>
+            </div>
+          </div>
+        </Link>
+
+        <Link
+          href="/configuracoes/cargos"
+          className="group rounded-lg border border-ink-200 bg-white p-4 transition-shadow hover:shadow-sm"
+        >
+          <div className="flex items-start gap-3">
+            <div className="rounded-md bg-brand-100 p-2 text-brand-800">
+              <UserCog className="h-5 w-5" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-ink-900">Cargos de liderança</p>
+                <ArrowRight className="h-4 w-4 text-ink-400 transition-transform group-hover:translate-x-0.5 group-hover:text-brand-700" />
+              </div>
+              <p className="mt-0.5 text-xs text-ink-500">
+                Adicione, renomeie ou desative as opções de cargo usadas no cadastro de
+                lideranças. Somente <strong>admin</strong> e <strong>coordenador</strong>.
+              </p>
+            </div>
+          </div>
+        </Link>
+
         <Card>
           <CardHeader className="flex-row items-start gap-3 space-y-0">
             <div className="rounded-md bg-brand-100 p-2 text-brand-800">

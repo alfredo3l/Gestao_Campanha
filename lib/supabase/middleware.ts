@@ -20,29 +20,11 @@ import type { Database } from "@/types/database";
 export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const isPublic =
-    pathname.startsWith("/login") ||
-    pathname.startsWith("/auth") ||
-    pathname.startsWith("/_next") ||
-    pathname === "/favicon.ico";
+  const isStatic =
+    pathname.startsWith("/_next") || pathname === "/favicon.ico";
+  if (isStatic) return NextResponse.next({ request });
 
-  // Rotas públicas: não instancia client, não toca cookie, não bate em rede.
-  if (isPublic) {
-    // Caso especial: se já existe sessão e o usuário tenta acessar /login,
-    // redireciona para o dashboard. Aqui ainda lemos o cookie localmente.
-    if (pathname === "/login") {
-      const hasAuthCookie = request.cookies.getAll().some((c) => c.name.startsWith("sb-") && c.name.endsWith("-auth-token"));
-      if (hasAuthCookie) {
-        const url = request.nextUrl.clone();
-        url.pathname = "/dashboard";
-        url.searchParams.delete("next");
-        return NextResponse.redirect(url);
-      }
-    }
-    return NextResponse.next({ request });
-  }
-
-  let response = NextResponse.next({ request });
+  const isPublic = pathname.startsWith("/login") || pathname.startsWith("/auth");
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -55,8 +37,10 @@ export async function updateSession(request: NextRequest) {
     console.error(
       "[middleware] NEXT_PUBLIC_SUPABASE_URL ou NEXT_PUBLIC_SUPABASE_ANON_KEY ausentes — configure no painel da Vercel."
     );
-    return response;
+    return NextResponse.next({ request });
   }
+
+  let response = NextResponse.next({ request });
 
   const supabase = createServerClient<Database, "campanha">(
     supabaseUrl,
@@ -78,26 +62,46 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // `getSession()` lê apenas o cookie e renova o JWT quando expirado.
-  // Não faz roundtrip ao Supabase Auth a cada request — diferença grande vs `getUser()`.
+  // `getSession()` lê o cookie e renova o JWT quando necessário, sem roundtrip
+  // a cada request (diferente de `getUser()`). Mas o cookie pode estar
+  // corrompido / com JWT expirado / pertencendo a um projeto Supabase antigo.
+  // Em qualquer falha aqui consideramos "sem sessão" e LIMPAMOS os cookies
+  // antes de redirecionar — isso evita o loop com o layout autenticado, que
+  // valida o usuário de verdade via `getUser()`.
+  let hasValidSession = false;
   try {
     const {
       data: { session },
+      error,
     } = await supabase.auth.getSession();
 
-    if (!session) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/login";
-      url.searchParams.set("next", pathname);
-      return NextResponse.redirect(url);
+    if (!error && session) {
+      // Confere validade temporal — JWT expirado é tratado como sem sessão.
+      const exp = session.expires_at ? session.expires_at * 1000 : 0;
+      hasValidSession = exp > Date.now();
     }
   } catch (error) {
-    // Falha de rede / cookie corrompido não deve gerar 500 no site inteiro.
     console.error("[middleware] Erro ao validar sessão Supabase:", error);
+    hasValidSession = false;
+  }
+
+  // Rota pública: deixa entrar. Não redirecionamos /login → /dashboard
+  // baseado em sessão — o layout autenticado é a fonte da verdade. Isso
+  // remove a possibilidade de loop quando o cookie está corrompido.
+  if (isPublic) return response;
+
+  // Rota privada sem sessão válida: limpa cookies de auth e manda para /login.
+  if (!hasValidSession) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", pathname);
-    return NextResponse.redirect(url);
+    const redirect = NextResponse.redirect(url);
+    for (const cookie of request.cookies.getAll()) {
+      if (cookie.name.startsWith("sb-")) {
+        redirect.cookies.set(cookie.name, "", { maxAge: 0, path: "/" });
+      }
+    }
+    return redirect;
   }
 
   return response;

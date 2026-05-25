@@ -9,6 +9,9 @@ import { DemandaForm } from "../demanda-form";
 import { ComentarioForm } from "./comentario-form";
 import { ExcluirDemandaButton } from "./excluir-button";
 import { StatusDemandaBadge, PrioridadeBadge } from "@/components/app/status-badge";
+import { TrilhaAuditoria } from "@/components/app/trilha-auditoria";
+import { AvatarInitials } from "@/components/app/avatar-initials";
+import { resolverUsuariosAuditoria } from "@/lib/auditoria";
 import { fmtData, fmtDataHora } from "@/lib/utils/formatters";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -30,6 +33,11 @@ export default async function DemandaDetalhePage({ params }: { params: { id: str
 
   const d = demandaRes.data;
   const movs = movRes.data ?? [];
+  const auditUsers = await resolverUsuariosAuditoria([
+    d.created_by,
+    d.updated_by,
+    ...movs.map((m) => m.autor_id),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -72,9 +80,13 @@ export default async function DemandaDetalhePage({ params }: { params: { id: str
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             <Field label="Prazo">{d.prazo ? fmtData(d.prazo) : "—"}</Field>
-            <Field label="Criada em">{fmtDataHora(d.created_at)}</Field>
-            <Field label="Última atualização">{fmtDataHora(d.updated_at)}</Field>
             {d.resolvida_em && <Field label="Resolvida em">{fmtDataHora(d.resolvida_em)}</Field>}
+            <TrilhaAuditoria
+              createdAt={d.created_at}
+              updatedAt={d.updated_at}
+              createdBy={auditUsers.get(d.created_by ?? "") ?? null}
+              updatedBy={auditUsers.get(d.updated_by ?? "") ?? null}
+            />
           </CardContent>
         </Card>
       </div>
@@ -95,23 +107,42 @@ export default async function DemandaDetalhePage({ params }: { params: { id: str
                     Sem movimentações ainda.
                   </li>
                 )}
-                {movs.map((m) => (
-                  <li key={m.id} className="rounded-md border border-ink-200 bg-white p-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-2xs font-semibold uppercase tracking-wide text-ink-500">
-                        {m.tipo === "comentario"
-                          ? "Comentário"
-                          : m.tipo === "status_change"
-                          ? "Mudança de status"
-                          : "Anexo"}
-                      </span>
-                      <span className="font-mono-tab text-2xs text-ink-500">
-                        {fmtDataHora(m.criada_em)}
-                      </span>
-                    </div>
-                    {m.texto && <p className="mt-1 whitespace-pre-wrap text-sm text-ink-700">{m.texto}</p>}
-                  </li>
-                ))}
+                {movs.map((m) => {
+                  const autor = auditUsers.get(m.autor_id ?? "") ?? null;
+                  return (
+                    <li key={m.id} className="rounded-md border border-ink-200 bg-white p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          {autor ? (
+                            <AvatarInitials
+                              nome={autor.nome}
+                              fotoPath={autor.foto_path}
+                              className="h-6 w-6 text-[10px]"
+                            />
+                          ) : null}
+                          <div>
+                            <span className="text-2xs font-semibold uppercase tracking-wide text-ink-500">
+                              {m.tipo === "comentario"
+                                ? "Comentário"
+                                : m.tipo === "status_change"
+                                ? "Mudança de status"
+                                : "Anexo"}
+                            </span>
+                            {autor && (
+                              <span className="ml-1.5 text-2xs text-ink-700">
+                                por <span className="font-medium">{autor.nome}</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <span className="font-mono-tab text-2xs text-ink-500">
+                          {fmtDataHora(m.criada_em)}
+                        </span>
+                      </div>
+                      {m.texto && <p className="mt-1 whitespace-pre-wrap text-sm text-ink-700">{m.texto}</p>}
+                    </li>
+                  );
+                })}
               </ul>
             </CardContent>
           </Card>

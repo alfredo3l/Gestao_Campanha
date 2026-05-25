@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -9,6 +10,7 @@ import {
   Target,
   Inbox,
   BarChart3,
+  PieChart,
   Settings,
 } from "lucide-react";
 
@@ -21,6 +23,7 @@ const items = [
   { href: "/metas", label: "Metas", icon: Target },
   { href: "/demandas", label: "Demandas", icon: Inbox },
   { href: "/relatorios", label: "Relatórios", icon: BarChart3 },
+  { href: "/estatisticas-eleitorais", label: "Estatísticas Eleitorais", icon: PieChart },
   { href: "/configuracoes", label: "Configurações", icon: Settings },
 ];
 
@@ -28,9 +31,20 @@ export function Sidebar() {
   const pathname = usePathname();
   return (
     <aside className="hidden bg-brand-900 text-white md:row-span-2 md:flex md:flex-col">
-      <div className="border-b border-white/10 px-5 py-4">
-        <p className="font-mono-tab text-2xs uppercase tracking-widest text-white/60">Plataforma de Gestão de Campanha</p>
-        <p className="mt-0.5 font-display text-base font-semibold">MS · Dep. Estadual</p>
+      <div className="flex flex-col items-center gap-3 border-b border-white/10 px-5 py-5">
+        <div className="relative h-20 w-20 overflow-hidden rounded-full ring-2 ring-white/20">
+          <Image
+            src="/foto_Guerreiro.webp"
+            alt="Guerreiro"
+            fill
+            sizes="80px"
+            className="object-cover"
+            priority
+          />
+        </div>
+        <p className="text-center font-mono-tab text-2xs uppercase tracking-widest text-white/60">
+          Plataforma de Gestão de Campanha
+        </p>
       </div>
       <nav className="flex-1 space-y-0.5 px-2 py-3 text-sm">
         {items.map((it) => {

@@ -2,7 +2,6 @@ import { Badge } from "@/components/ui/badge";
 
 import type { Prioridade, StatusDemanda } from "@/lib/validations/demanda";
 import type { StatusApoio } from "@/lib/validations/apoiador";
-import type { CargoLider } from "@/lib/validations/lideranca";
 
 const statusApoioMap: Record<StatusApoio, { label: string; variant: "green" | "blue" | "amber" | "violet" | "secondary" }> = {
   confirmado: { label: "Confirmado", variant: "green" },
@@ -26,14 +25,6 @@ const prioridadeMap: Record<Prioridade, { label: string; variant: "secondary" | 
   urgente: { label: "Urgente", variant: "red" },
 };
 
-export const cargoLiderMap: Record<CargoLider, string> = {
-  coord_regional: "Coord. Regional",
-  coord_zona: "Coord. de Zona",
-  lider_bairro: "Líder de Bairro",
-  lider_comunitario: "Líder Comunitário",
-  lider_rural: "Líder Rural",
-};
-
 export function StatusApoioBadge({ status }: { status: StatusApoio }) {
   const cfg = statusApoioMap[status];
   return <Badge variant={cfg.variant}>{cfg.label}</Badge>;
@@ -49,6 +40,20 @@ export function PrioridadeBadge({ prioridade }: { prioridade: Prioridade }) {
   return <Badge variant={cfg.variant}>{cfg.label}</Badge>;
 }
 
-export function CargoBadge({ cargo }: { cargo: CargoLider }) {
-  return <Badge variant="outline">{cargoLiderMap[cargo]}</Badge>;
+/**
+ * Renderiza o badge de cargo de liderança.
+ *
+ * Recebe diretamente o `label` (texto em PT-BR) carregado do banco — a página
+ * que invoca deve resolver via `getCargosLiderMap()` (em `lib/cargos`).
+ * Quando o `label` não é fornecido (cargo deletado, etc.), exibe o próprio
+ * slug como fallback.
+ */
+export function CargoBadge({
+  cargo,
+  label,
+}: {
+  cargo: string;
+  label?: string;
+}) {
+  return <Badge variant="outline">{label ?? cargo}</Badge>;
 }

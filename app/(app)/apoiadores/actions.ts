@@ -4,11 +4,14 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
-import { apoiadorSchema } from "@/lib/validations/apoiador";
+import {
+  apoiadorCreateSchema,
+  apoiadorUpdateSchema,
+} from "@/lib/validations/apoiador";
 
 export type ActionState = { error?: string; ok?: boolean };
 
-function parseForm(formData: FormData) {
+function extractFormFields(formData: FormData) {
   const tagsRaw = String(formData.get("tags") ?? "");
   const tags = tagsRaw
     .split(",")
@@ -16,7 +19,7 @@ function parseForm(formData: FormData) {
     .filter(Boolean)
     .slice(0, 20);
 
-  return apoiadorSchema.safeParse({
+  return {
     nome: formData.get("nome"),
     cpf: formData.get("cpf"),
     titulo_eleitor: formData.get("titulo_eleitor") || "",
@@ -34,8 +37,8 @@ function parseForm(formData: FormData) {
     indicado_por: formData.get("indicado_por") || "",
     observacoes: formData.get("observacoes") || "",
     tags,
-    consentimento_lgpd: formData.get("consentimento_lgpd") === "on",
-  });
+    foto_path: formData.get("foto_path") || "",
+  };
 }
 
 export async function criarApoiador(_: ActionState, formData: FormData): Promise<ActionState> {
@@ -45,7 +48,10 @@ export async function criarApoiador(_: ActionState, formData: FormData): Promise
   } = await supabase.auth.getUser();
   if (!user) return { error: "Sessão expirada." };
 
-  const parsed = parseForm(formData);
+  const parsed = apoiadorCreateSchema.safeParse({
+    ...extractFormFields(formData),
+    consentimento_lgpd: formData.get("consentimento_lgpd") === "on",
+  });
   if (!parsed.success) {
     return { error: parsed.error.issues.map((i) => i.message).join(" · ") };
   }
@@ -70,6 +76,7 @@ export async function criarApoiador(_: ActionState, formData: FormData): Promise
       status: p.status,
       indicado_por: p.indicado_por || null,
       observacoes: p.observacoes || null,
+      foto_path: p.foto_path,
       data_consentimento: new Date().toISOString(),
       created_by: user.id,
     })
@@ -95,7 +102,7 @@ export async function atualizarApoiador(
 ): Promise<ActionState> {
   const supabase = createClient();
 
-  const parsed = parseForm(formData);
+  const parsed = apoiadorUpdateSchema.safeParse(extractFormFields(formData));
   if (!parsed.success) {
     return { error: parsed.error.issues.map((i) => i.message).join(" · ") };
   }
@@ -120,6 +127,7 @@ export async function atualizarApoiador(
       status: p.status,
       indicado_por: p.indicado_por || null,
       observacoes: p.observacoes || null,
+      foto_path: p.foto_path,
     })
     .eq("id", id);
 

@@ -39,8 +39,8 @@ export function ExcluirLiderancaButton({ id }: { id: string }) {
         <DialogHeader>
           <DialogTitle>Excluir liderança?</DialogTitle>
           <DialogDescription>
-            Esta ação não pode ser desfeita. Apoiadores vinculados ficarão sem liderança e
-            o cadastro será removido permanentemente.
+            Esta ação não pode ser desfeita. A liderança só pode ser excluída se não houver
+            apoiadores nem demandas vinculados — realoque ou remova esses registros antes.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

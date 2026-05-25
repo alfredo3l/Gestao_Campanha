@@ -18,7 +18,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="grid min-h-screen grid-cols-1 md:grid-cols-[theme(spacing.sidebar)_1fr] md:grid-rows-[theme(spacing.topbar)_1fr]">
       <Sidebar />
-      <Topbar email={user.email ?? ""} nome={profile?.nome ?? null} role={profile?.role ?? null} />
+      <Topbar
+        email={user.email ?? ""}
+        nome={profile?.nome ?? null}
+        role={profile?.role ?? null}
+        fotoPath={profile?.foto_path ?? null}
+      />
       <main className="overflow-y-auto bg-ink-50/40 p-6">{children}</main>
     </div>
   );

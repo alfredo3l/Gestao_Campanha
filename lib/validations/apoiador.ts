@@ -12,7 +12,12 @@ export const statusApoioEnum = z.enum([
 ]);
 export type StatusApoio = z.infer<typeof statusApoioEnum>;
 
-export const apoiadorSchema = z.object({
+/**
+ * Campos comuns entre criação e edição. Manter sem `consentimento_lgpd`:
+ * esse campo é exigido apenas no momento do cadastro inicial (a coluna
+ * `data_consentimento` registra o opt-in original e não muda em updates).
+ */
+export const apoiadorBaseSchema = z.object({
   nome: z.string().trim().min(3, "Nome muito curto").max(120),
   cpf: z
     .string()
@@ -52,9 +57,29 @@ export const apoiadorSchema = z.object({
   indicado_por: z.string().trim().max(120).optional().or(z.literal("")),
   observacoes: z.string().trim().max(2000).optional().or(z.literal("")),
   tags: z.array(z.string().trim().min(1).max(40)).max(20).default([]),
+  /** Caminho relativo no bucket `campanha-fotos`. NULL/'' = sem foto. */
+  foto_path: z
+    .string()
+    .trim()
+    .max(300, "Caminho de foto muito longo")
+    .optional()
+    .or(z.literal(""))
+    .transform((v) => (v ? v : null))
+    .nullable(),
+});
+
+/** Schema usado no cadastro inicial — exige consentimento LGPD. */
+export const apoiadorCreateSchema = apoiadorBaseSchema.extend({
   consentimento_lgpd: z
     .boolean()
     .refine((v) => v === true, "É necessário registrar o consentimento (LGPD)"),
 });
 
-export type ApoiadorInput = z.infer<typeof apoiadorSchema>;
+/** Schema usado na edição — o consentimento já foi registrado no cadastro. */
+export const apoiadorUpdateSchema = apoiadorBaseSchema;
+
+/** @deprecated Use `apoiadorCreateSchema` (mais explícito). Mantido p/ compatibilidade. */
+export const apoiadorSchema = apoiadorCreateSchema;
+
+export type ApoiadorInput = z.infer<typeof apoiadorCreateSchema>;
+export type ApoiadorUpdateInput = z.infer<typeof apoiadorUpdateSchema>;

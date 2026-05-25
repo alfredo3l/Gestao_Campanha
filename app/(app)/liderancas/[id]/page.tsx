@@ -3,12 +3,16 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Mail, Phone, MapPin } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/server";
+import { getCargosLider, getCargosLiderMap } from "@/lib/cargos/get-cargos";
 import { PageHeader } from "@/components/app/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LiderancaForm } from "../lideranca-form";
 import { CargoBadge, StatusApoioBadge, StatusDemandaBadge, PrioridadeBadge } from "@/components/app/status-badge";
 import { ProgressBar } from "@/components/app/progress-bar";
+import { AvatarInitials } from "@/components/app/avatar-initials";
+import { TrilhaAuditoria } from "@/components/app/trilha-auditoria";
+import { resolverUsuariosAuditoria } from "@/lib/auditoria";
 import { fmtNumero, fmtTelefone, fmtData } from "@/lib/utils/formatters";
 import {
   Table,
@@ -24,20 +28,23 @@ import { ExcluirLiderancaButton } from "./excluir-button";
 export default async function LiderancaDetalhePage({ params }: { params: { id: string } }) {
   const supabase = createClient();
 
-  const [liderancaRes, progressoRes, apoiadoresRes, demandasRes] = await Promise.all([
-    supabase.from("liderancas").select("*").eq("id", params.id).maybeSingle(),
-    supabase.from("v_progresso_lideranca").select("*").eq("id", params.id).maybeSingle(),
-    supabase
-      .from("apoiadores")
-      .select("id, nome, municipio, bairro, status, tel, created_at")
-      .eq("lider_id", params.id)
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("demandas")
-      .select("id, codigo, titulo, status, prioridade, prazo, created_at")
-      .eq("lider_id", params.id)
-      .order("created_at", { ascending: false }),
-  ]);
+  const [liderancaRes, progressoRes, apoiadoresRes, demandasRes, cargos, cargosMap] =
+    await Promise.all([
+      supabase.from("liderancas").select("*").eq("id", params.id).maybeSingle(),
+      supabase.from("v_progresso_lideranca").select("*").eq("id", params.id).maybeSingle(),
+      supabase
+        .from("apoiadores")
+        .select("id, nome, foto_path, municipio, bairro, status, tel, created_at")
+        .eq("lider_id", params.id)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("demandas")
+        .select("id, codigo, titulo, status, prioridade, prazo, created_at")
+        .eq("lider_id", params.id)
+        .order("created_at", { ascending: false }),
+      getCargosLider(),
+      getCargosLiderMap(),
+    ]);
 
   if (liderancaRes.error || !liderancaRes.data) notFound();
 
@@ -45,6 +52,11 @@ export default async function LiderancaDetalhePage({ params }: { params: { id: s
   const prog = progressoRes.data;
   const apoiadores = apoiadoresRes.data ?? [];
   const demandas = demandasRes.data ?? [];
+  const cargosAtivos = cargos
+    .filter((c) => c.ativo)
+    .map((c) => ({ value: c.value, label: c.label }));
+
+  const auditUsers = await resolverUsuariosAuditoria([lider.created_by, lider.updated_by]);
 
   const pct = prog?.pct_meta ?? 0;
   const tone: "brand" | "amber" | "red" | "green" =
@@ -68,11 +80,16 @@ export default async function LiderancaDetalhePage({ params }: { params: { id: s
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
         <Card>
           <CardHeader>
-            <div className="flex items-start justify-between gap-3">
-              <div>
+            <div className="flex items-start gap-4">
+              <AvatarInitials
+                nome={lider.nome}
+                fotoPath={lider.foto_path}
+                className="h-16 w-16 shrink-0 text-base"
+              />
+              <div className="min-w-0 flex-1">
                 <CardTitle>Identificação</CardTitle>
                 <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <CargoBadge cargo={lider.cargo} />
+                  <CargoBadge cargo={lider.cargo} label={cargosMap[lider.cargo]} />
                   {lider.ativa ? (
                     <Badge variant="green">Ativa</Badge>
                   ) : (
@@ -82,18 +99,26 @@ export default async function LiderancaDetalhePage({ params }: { params: { id: s
               </div>
             </div>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
-            <Info icon={<MapPin className="h-3.5 w-3.5" />} label="Município">
-              {lider.municipio}
-              {lider.bairro ? ` · ${lider.bairro}` : ""}
-            </Info>
-            <Info icon={<Phone className="h-3.5 w-3.5" />} label="Telefone">
-              {lider.tel ? fmtTelefone(lider.tel) : "—"}
-            </Info>
-            <Info icon={<Mail className="h-3.5 w-3.5" />} label="E-mail">
-              {lider.email ?? "—"}
-            </Info>
-            <Info label="Cadastrada em">{fmtData(lider.created_at)}</Info>
+          <CardContent className="space-y-4 text-sm">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <Info icon={<MapPin className="h-3.5 w-3.5" />} label="Município">
+                {lider.municipio}
+                {lider.bairro ? ` · ${lider.bairro}` : ""}
+              </Info>
+              <Info icon={<Phone className="h-3.5 w-3.5" />} label="Telefone">
+                {lider.tel ? fmtTelefone(lider.tel) : "—"}
+              </Info>
+              <Info icon={<Mail className="h-3.5 w-3.5" />} label="E-mail">
+                {lider.email ?? "—"}
+              </Info>
+              <Info label="Cadastrada em">{fmtData(lider.created_at)}</Info>
+            </div>
+            <TrilhaAuditoria
+              createdAt={lider.created_at}
+              updatedAt={lider.updated_at}
+              createdBy={auditUsers.get(lider.created_by ?? "") ?? null}
+              updatedBy={auditUsers.get(lider.updated_by ?? "") ?? null}
+            />
           </CardContent>
         </Card>
 
@@ -134,6 +159,7 @@ export default async function LiderancaDetalhePage({ params }: { params: { id: s
               <LiderancaForm
                 modo="editar"
                 id={lider.id}
+                cargos={cargosAtivos}
                 inicial={{
                   nome: lider.nome,
                   cargo: lider.cargo,
@@ -143,6 +169,7 @@ export default async function LiderancaDetalhePage({ params }: { params: { id: s
                   email: lider.email,
                   meta_votos: lider.meta_votos,
                   ativa: lider.ativa,
+                  foto_path: lider.foto_path,
                 }}
               />
               <div className="mt-6 flex items-center justify-between border-t border-ink-100 pt-4">
@@ -179,9 +206,15 @@ export default async function LiderancaDetalhePage({ params }: { params: { id: s
                   {apoiadores.map((a) => (
                     <TableRow key={a.id}>
                       <TableCell>
-                        <Link href={`/apoiadores/${a.id}`} className="font-medium text-ink-900 hover:underline">
-                          {a.nome}
-                        </Link>
+                        <div className="flex items-center gap-2.5">
+                          <AvatarInitials nome={a.nome} fotoPath={a.foto_path} />
+                          <Link
+                            href={`/apoiadores/${a.id}`}
+                            className="font-medium text-ink-900 hover:underline"
+                          >
+                            {a.nome}
+                          </Link>
+                        </div>
                       </TableCell>
                       <TableCell className="text-ink-600">
                         {a.municipio}

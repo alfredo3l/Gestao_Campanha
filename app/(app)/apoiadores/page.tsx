@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { StatusApoioBadge } from "@/components/app/status-badge";
 import { EmptyState } from "@/components/app/empty-state";
+import { AvatarInitials } from "@/components/app/avatar-initials";
 import { ApoiadoresFiltros } from "./filtros";
 import { fmtNumero, fmtTelefone, fmtData } from "@/lib/utils/formatters";
 import { formatarCpf, somenteDigitos } from "@/lib/utils/cpf";
@@ -40,7 +41,7 @@ export default async function ApoiadoresPage({ searchParams }: { searchParams: S
   let query = supabase
     .from("apoiadores")
     .select(
-      "id, nome, cpf, tel, municipio, bairro, status, created_at, lider:liderancas(id, nome)",
+      "id, nome, cpf, tel, foto_path, municipio, bairro, status, created_at, lider:liderancas(id, nome, foto_path)",
       { count: "exact" }
     )
     .order("created_at", { ascending: false })
@@ -153,12 +154,20 @@ export default async function ApoiadoresPage({ searchParams }: { searchParams: S
                 return (
                   <TableRow key={a.id}>
                     <TableCell>
-                      <Link href={`/apoiadores/${a.id}`} className="font-medium text-ink-900 hover:underline">
-                        {a.nome}
-                      </Link>
-                      {a.bairro && (
-                        <p className="text-2xs text-ink-500">{a.bairro}</p>
-                      )}
+                      <div className="flex items-center gap-2.5">
+                        <AvatarInitials nome={a.nome} fotoPath={a.foto_path} />
+                        <div className="min-w-0">
+                          <Link
+                            href={`/apoiadores/${a.id}`}
+                            className="block font-medium text-ink-900 hover:underline"
+                          >
+                            {a.nome}
+                          </Link>
+                          {a.bairro && (
+                            <p className="text-2xs text-ink-500">{a.bairro}</p>
+                          )}
+                        </div>
+                      </div>
                     </TableCell>
                     <TableCell className="font-mono-tab text-xs text-ink-600">
                       {formatarCpf(a.cpf)}

@@ -9,6 +9,9 @@ import { ApoiadorForm } from "../apoiador-form";
 import { Button } from "@/components/ui/button";
 import { ExcluirApoiadorButton } from "./excluir-button";
 import { StatusApoioBadge } from "@/components/app/status-badge";
+import { AvatarInitials } from "@/components/app/avatar-initials";
+import { TrilhaAuditoria } from "@/components/app/trilha-auditoria";
+import { resolverUsuariosAuditoria } from "@/lib/auditoria";
 import { fmtData } from "@/lib/utils/formatters";
 
 export default async function ApoiadorDetalhePage({ params }: { params: { id: string } }) {
@@ -25,11 +28,21 @@ export default async function ApoiadorDetalhePage({ params }: { params: { id: st
   const a = apoiadorRes.data;
   const liderancas = liderancasRes.data ?? [];
   const tags = (tagsRes.data ?? []).map((t) => t.tag);
+  const auditUsers = await resolverUsuariosAuditoria([a.created_by, a.updated_by]);
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title={a.nome}
+        title={
+          <span className="flex items-center gap-3">
+            <AvatarInitials
+              nome={a.nome}
+              fotoPath={a.foto_path}
+              className="h-10 w-10 text-sm"
+            />
+            <span>{a.nome}</span>
+          </span>
+        }
         description={
           <span className="flex items-center gap-2">
             <StatusApoioBadge status={a.status} /> · cadastrado em {fmtData(a.created_at)}
@@ -43,6 +56,13 @@ export default async function ApoiadorDetalhePage({ params }: { params: { id: st
             <ArrowLeft className="h-4 w-4" /> Apoiadores
           </Link>
         }
+      />
+
+      <TrilhaAuditoria
+        createdAt={a.created_at}
+        updatedAt={a.updated_at}
+        createdBy={auditUsers.get(a.created_by ?? "") ?? null}
+        updatedBy={auditUsers.get(a.updated_by ?? "") ?? null}
       />
 
       <Card>
@@ -69,6 +89,7 @@ export default async function ApoiadorDetalhePage({ params }: { params: { id: st
               indicado_por: a.indicado_por,
               observacoes: a.observacoes,
               tags,
+              foto_path: a.foto_path,
             }}
           />
           <div className="mt-6 flex items-center justify-between border-t border-ink-100 pt-4">
