@@ -9,7 +9,7 @@ const nextConfig = {
     dirs: ["app", "components", "lib", "types"],
   },
   experimental: {
-    typedRoutes: true,
+    typedRoutes: false,
   },
 };
 

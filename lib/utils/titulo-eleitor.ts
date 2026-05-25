@@ -26,7 +26,7 @@ export function validarTituloEleitor(valor: string): boolean {
   const calcDv = (base: string, pesos: number[]): number => {
     let soma = 0;
     for (let i = 0; i < base.length; i++) {
-      soma += Number(base[i]) * pesos[i];
+      soma += Number(base[i]) * (pesos[i] ?? 0);
     }
     let dv = soma % 11;
     if (dv === 10) dv = 0;

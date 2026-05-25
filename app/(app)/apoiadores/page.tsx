@@ -47,7 +47,10 @@ export default async function ApoiadoresPage({ searchParams }: { searchParams: S
     .range(from, to);
 
   if (searchParams.status && searchParams.status !== "todos") {
-    query = query.eq("status", searchParams.status);
+    query = query.eq(
+      "status",
+      searchParams.status as "confirmado" | "provavel" | "indeciso" | "contato" | "nao_vota"
+    );
   }
   if (searchParams.municipio && searchParams.municipio !== "todos") {
     query = query.eq("municipio", searchParams.municipio);

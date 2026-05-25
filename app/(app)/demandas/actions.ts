@@ -99,12 +99,13 @@ export async function moverStatusDemanda(id: string, novoStatus: "aberta" | "and
   } = await supabase.auth.getUser();
   if (!user) return { error: "Sessão expirada." };
 
-  const update: Record<string, unknown> = {
-    status: novoStatus,
-    resolvida_em: novoStatus === "resolvida" ? new Date().toISOString() : null,
-  };
-
-  const { error } = await supabase.from("demandas").update(update).eq("id", id);
+  const { error } = await supabase
+    .from("demandas")
+    .update({
+      status: novoStatus,
+      resolvida_em: novoStatus === "resolvida" ? new Date().toISOString() : null,
+    })
+    .eq("id", id);
   if (error) return { error: error.message };
 
   await supabase.from("demanda_movimentacoes").insert({

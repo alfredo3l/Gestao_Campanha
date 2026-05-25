@@ -303,6 +303,7 @@ export type Database = {
           votos_projetados: number;
           pct_meta: number | null;
         };
+        Relationships: [];
       };
       v_progresso_regiao: {
         Row: {
@@ -317,6 +318,7 @@ export type Database = {
           votos_projetados: number;
           pct_meta: number | null;
         };
+        Relationships: [];
       };
       v_dashboard_kpis: {
         Row: {
@@ -328,6 +330,7 @@ export type Database = {
           demandas_abertas: number;
           demandas_vencendo: number;
         };
+        Relationships: [];
       };
     };
     Functions: {
